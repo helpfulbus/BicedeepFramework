@@ -12,7 +12,7 @@ class Timing:
         threshold = WAIT_UNTIL_MIN
         last_reboot_cmd = "last -F | grep reboot"
         reboot_times = subprocess.check_output(last_reboot_cmd, shell=True)
-        reboot_times_split = reboot_times.split(' ')
+        reboot_times_split = reboot_times.decode().split(' ')
 
         last_start_time = datetime.datetime.strptime(reboot_times_split[10] + "-" +
                                                      reboot_times_split[11] + "-" +
