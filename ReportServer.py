@@ -2,7 +2,7 @@ from Common import Timing
 from Common import GoogleStorage
 from Common import Aws
 from Common import Logging
-from ReportServerAI import reportUnit
+from ReportServerAI import report
 import config
 
 
@@ -20,14 +20,14 @@ def main():
             Logging.Logging.write_log_to_file("Read message from aws queue")
 
             try:
-                [file_name, email] = Aws.deserialize_message(message)
+                [email, file_name, selected_headers] = Aws.deserialize_message(message)
             except Exception as e:
                 Logging.Logging.write_log_to_file(str(e))
                 continue
 
             file_path = ""
             try:
-                file_path = GoogleStorage.download_file(file_name)
+                [file_path, reports_path, outputs_path] = GoogleStorage.download_file(file_name, email)
             except Exception as e:
                 Logging.Logging.write_log_to_file(str(e))
                 continue
@@ -36,7 +36,7 @@ def main():
 
             # Calculations
             try:
-                reportUnit.report_test(file_path)
+                report.create_report(file_path, file_name.split("/")[-1], selected_headers, reports_path, outputs_path)
             except Exception as e:
                 Logging.Logging.write_log_to_file(str(e))
                 continue

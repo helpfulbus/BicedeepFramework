@@ -45,7 +45,7 @@ def read_report_queue():
 
 def deserialize_message(message):
     deserialized_message = json.loads(message.body, object_hook=lambda d: namedtuple('X', d.keys())(*d.values()))
-    return deserialized_message.fileName, deserialized_message.email
+    return deserialized_message.email, deserialized_message.fileName, deserialized_message.selectedHeaders
 
 
 def stop_instance(instance_id):
