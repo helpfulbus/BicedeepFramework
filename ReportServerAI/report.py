@@ -15,12 +15,13 @@ import resource
 import os
 import math
 import datetime as dt
+import json
 from dateutil import parser
 from dateutil.parser import parse
 from Common import Logging
 
 import tensorflow as tf
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 sess = tf.Session()
 
 
@@ -50,6 +51,43 @@ def getModelNumber(number):
     strNumber = str(number)
     return ('00000' + strNumber)[len(strNumber):]
 
+def create_report_file(report_path, file_name, label_mse_score, label_suggestion):
+    part_predictability = []
+    for key, value in label_mse_score.items():
+        data = {}
+        data["part_name"] = key
+        data["predictability"] = value
+        part_predictability.append(data)
+
+    suggestions = []
+    for key, value in label_suggestion.items():
+        data = {}
+        data["part"] = key
+        data["using"] = value.tolist()
+        suggestions.append(data)
+
+    json_file = {}
+    json_file["part_predictability"] = part_predictability
+    json_file["suggestions"] = suggestions
+
+    with open(report_path + "/" + file_name + ".json", 'w') as outfile:
+        json.dump(json_file, outfile)
+
+def create_details_file(output_path, file_name, label_suggestion):
+    # Generate details
+    file_counter = 1
+    for key, value in label_suggestion.items():
+        suggestions = []
+        data = {}
+        data["part"] = key
+        data["using"] = value.tolist()
+        suggestions.append(data)
+        json_file = {}
+        json_file["suggestions"] = suggestions
+        filename = output_path + "/" + file_name + "." + getModelNumber(file_counter) + ".h5.json"
+        with open(filename, 'w') as outfile:
+            json.dump(json_file, outfile)
+        file_counter += 1
 
 # Convert number to datetime, and string:
 # data_df['Country']= data_df['Country'].map(dt.datetime.fromordinal)
@@ -284,3 +322,5 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
 
             # pid,status = os.waitpid(child_pid,0)
 
+    create_report_file(reports_path, file_name, label_mse_score, label_suggestion)
+    create_details_file(outputs_path, file_name, label_suggestion)

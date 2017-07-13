@@ -40,8 +40,20 @@ def main():
             except Exception as e:
                 Logging.Logging.write_log_to_file(str(e))
                 continue
+
             # Google upload results
-            # Delete local file
+            try:
+                GoogleStorage.upload_results(email)
+            except:
+                Logging.Logging.write_log_to_file(str(e))
+                continue
+
+            # Delete local files
+            try:
+                GoogleStorage.delete_local_dir()
+            except:
+                Logging.Logging.write_log_to_file(str(e))
+                continue
 
             try:
                 Aws.send_report_completed_message(message.body)
