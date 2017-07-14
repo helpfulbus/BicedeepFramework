@@ -170,10 +170,8 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
         label_suggestion = {}
         label_mse_score = {}
         number_of_columns = len(desired_columns_as_label)
-        early_end = False;
         for i in range(0, number_of_columns):
-            if (early_end):
-                break
+            early_end = False;
 
             # child_pid = os.fork()
             # Logging.Logging.write_log_to_file("child_pid : " + str(child_pid))
@@ -201,14 +199,15 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
             best_minimumMSEValue = float('inf')  # value to keep min mse value
             minMSEFeatureList = []  # value to keep list of feature where min mse occurs
 
-            while (len(data_frame_copy.columns) > 2):
+            while (len(data_frame_copy.columns) >= 2):
                 if (early_end):
                     break
 
                 number_of_features = len(data_frame_copy.columns) - 1
 
-                modelClass = modelArchitectureClassification(number_of_features - 1, number_of_unique_values)
-                modelReg = modelArchitectureRegression(number_of_features - 1)
+                if(number_of_features - 1 > 0):
+                    modelClass = modelArchitectureClassification(number_of_features - 1, number_of_unique_values)
+                    modelReg = modelArchitectureRegression(number_of_features - 1)
 
                 remove_feature_index = -1
                 local_minimumMSEValue = float('inf')
@@ -227,6 +226,9 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                     if (j >= 0):
                         dataset = np.delete(dataset, [j], axis=1)
                         feature_set_column_names = np.delete(feature_set_column_names, [j])
+                        if(dataset.shape[1] < 2):
+                            early_end = True
+                            break
                     # split data as X: features, Y: labels
                     X = dataset[:, 0: len(dataset[0]) - 1]
                     Y = dataset[:, len(dataset[0]) - 1]
@@ -264,7 +266,9 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                                 best_minimumMSEValue = local_minimumMSEValue
                                 minMSEFeatureList = feature_set_column_names
                                 save_model = model
-                                modelClass = modelArchitectureClassification(number_of_features - 1,
+
+                                if (number_of_features - 1 > 0):
+                                    modelClass = modelArchitectureClassification(number_of_features - 1,
                                                                              number_of_unique_values)
 
                     else:
@@ -293,7 +297,9 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                                 best_minimumMSEValue = local_minimumMSEValue
                                 minMSEFeatureList = feature_set_column_names
                                 save_model = model
-                                modelReg = modelArchitectureRegression(number_of_features - 1)
+
+                                if (number_of_features - 1 > 0):
+                                    modelReg = modelArchitectureRegression(number_of_features - 1)
 
                 if (remove_feature_index >= 0):
                     Logging.Logging.write_log_to_file('removed feature: {}'.format(remove_feature_index))
@@ -304,7 +310,6 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
             label_mse_score[label_column_name] = best_minimumMSEValue
             model_save_file_number = getModelNumber(i + 1)
             model_save_file_name = outputs_path + "/" + file_name + "." + model_save_file_number + ".h5"
-            Logging.Logging.write_log_to_file(len(save_model.layers))
             save_model.save(model_save_file_name)
 
             Logging.Logging.write_log_to_file(label_suggestion)
