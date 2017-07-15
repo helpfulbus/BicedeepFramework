@@ -1,13 +1,19 @@
 from multiprocessing import Process
+import os
+import posix
 from Common import Timing
 from Common import GoogleStorage
 from Common import Aws
 from Common import Logging
-from ReportServerAI import report
 
 
 import config
 
+def selectable_feature(file_path, file_name, selected_headers, reports_path, outputs_path):
+    from ReportServerAI import report
+    os.nice(-20)
+    os.setpriority(posix.PRIO_PROCESS, os.getpid(), -20)
+    report.create_report(file_path, file_name, selected_headers, reports_path, outputs_path)
 
 def report_server_run(message):
     Logging.Logging.write_log_to_file("Read message from aws queue")
@@ -29,7 +35,9 @@ def report_server_run(message):
 
     # Calculations
     try:
-        report.create_report(file_path, file_name.split("/")[-1], selected_headers, reports_path, outputs_path)
+        p = Process(target=selectable_feature, args=(file_path, file_name.split("/")[-1], selected_headers, reports_path, outputs_path,))
+        p.start()
+        p.join()
     except Exception as e:
         Logging.Logging.write_log_to_file(str(e))
         return
@@ -75,7 +83,7 @@ def report_server_run(message):
 def main():
     Logging.Logging.write_log_to_file("Report Server Started")
     while True:
-
+        Logging.Logging.write_log_to_file_flush()
         try:
             message = Aws.read_report_queue()
         except Exception as e:
@@ -83,15 +91,13 @@ def main():
             continue
 
         if message is not None:
-            #p = Process(target=report_server_run, args=(message,))
-            #p.start()
-            #p.join()
             report_server_run(message)
         else:
             if Timing.Timing.DoShutDown():
                 Logging.Logging.write_log_to_file("Shutting down the instance")
                 try:
                     Aws.stop_instance(config.REPORT_INSTANCE_ID)
+                    Logging.Logging.write_log_to_file_flush()
                 except Exception as e:
                     Logging.Logging.write_log_to_file(str(e))
 

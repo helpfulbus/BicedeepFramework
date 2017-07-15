@@ -10,7 +10,6 @@ from sklearn.model_selection import KFold
 from sklearn.model_selection import cross_val_score
 from sklearn import model_selection
 import time
-import gc
 import resource
 import os
 import math
@@ -22,7 +21,7 @@ from Common import Logging
 
 import tensorflow as tf
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-sess = tf.Session()
+sess = tf.Session(config=tf.ConfigProto(inter_op_parallelism_threads=128))
 
 
 # Read given file from filepath and return
@@ -155,15 +154,15 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
     data_frame = readData(file_path)
 
     preprocess_start = time.time()
-    Logging.Logging.write_log_to_file("Starting Pre Process")
+    Logging.Logging.write_log_to_file_selectable("Starting Pre Process")
     string_columns, date_columns = preprocess_data(data_frame)
-    Logging.Logging.write_log_to_file("Pre Process Ended")
+    Logging.Logging.write_log_to_file_selectable("Pre Process Ended")
 
     preprocess_end = time.time()
-    Logging.Logging.write_log_to_file("Pre process took %.2f seconds " % (preprocess_end - preprocess_start))
+    Logging.Logging.write_log_to_file_selectable("Pre process took %.2f seconds " % (preprocess_end - preprocess_start))
 
     ##############Feature Selection Part#############
-    Logging.Logging.write_log_to_file('Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+    Logging.Logging.write_log_to_file_selectable('Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
     ft_sel_time_start = time.time()
 
     with tf.device('/gpu:0'):
@@ -174,7 +173,7 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
             early_end = False;
 
             # child_pid = os.fork()
-            # Logging.Logging.write_log_to_file("child_pid : " + str(child_pid))
+            # Logging.Logging.write_log_to_file_selectable("child_pid : " + str(child_pid))
             # if child_pid == 0:
 
             # copy data frame to make changes on copy
@@ -199,6 +198,7 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
             best_minimumMSEValue = float('inf')  # value to keep min mse value
             minMSEFeatureList = []  # value to keep list of feature where min mse occurs
 
+            isFirstTime = True
             while (len(data_frame_copy.columns) >= 2):
                 if (early_end):
                     break
@@ -211,11 +211,17 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
 
                 remove_feature_index = -1
                 local_minimumMSEValue = float('inf')
-                for j in range(-1, number_of_features):
+
+                if (isFirstTime):
+                    loop_start = -1
+                    isFirstTime = False
+                else:
+                    loop_start = 0
+                for j in range(loop_start, number_of_features):
                     if (early_end):
                         break
 
-                    Logging.Logging.write_log_to_file('Column Start 1 Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+                    Logging.Logging.write_log_to_file_selectable('Column Start 1 Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
 
                     # convert data_frame_copy into numpy matrix
                     dataset = data_frame_copy.values
@@ -243,7 +249,7 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                             model = modelArchitectureClassification(number_of_features, number_of_unique_values)
                         model.reset_states()
 
-                        Logging.Logging.write_log_to_file(
+                        Logging.Logging.write_log_to_file_selectable(
                             'Column Start 2 Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
 
                         y_train = data_to_categorical(y_train, column_unique_values, number_of_unique_values)
@@ -252,17 +258,17 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                         y_test = data_to_categorical(y_test, column_unique_values, number_of_unique_values)
 
                         accuracy = model.evaluate(x_test, y_test, batch_size=128, verbose=0)
-                        Logging.Logging.write_log_to_file("Loss: {}, Accuracy: {} ".format(accuracy[0], accuracy[1]))
-                        Logging.Logging.write_log_to_file(feature_set_column_names)
-                        Logging.Logging.write_log_to_file('Column Start 3 Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+                        Logging.Logging.write_log_to_file_selectable("Loss: {}, Accuracy: {} ".format(accuracy[0], accuracy[1]))
+                        Logging.Logging.write_log_to_file_selectable(feature_set_column_names)
+                        Logging.Logging.write_log_to_file_selectable('Column Start 3 Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
 
 
                         if accuracy[0] <= local_minimumMSEValue:
                             local_minimumMSEValue = accuracy[0]
                             remove_feature_index = j
-                            Logging.Logging.write_log_to_file('local')
+                            Logging.Logging.write_log_to_file_selectable('local')
                             if local_minimumMSEValue <= best_minimumMSEValue:
-                                Logging.Logging.write_log_to_file('best')
+                                Logging.Logging.write_log_to_file_selectable('best')
                                 best_minimumMSEValue = local_minimumMSEValue
                                 minMSEFeatureList = feature_set_column_names
                                 save_model = model
@@ -278,22 +284,22 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                             model = modelArchitectureRegression(number_of_features)
                         model.reset_states()
 
-                        Logging.Logging.write_log_to_file(
+                        Logging.Logging.write_log_to_file_selectable(
                             'Column Start 2 Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
 
                         model.fit(x_train, y_train, epochs=20, batch_size=128, verbose=0)
 
                         loss_and_metrics = model.evaluate(x_test, y_test, batch_size=128, verbose=0)
-                        Logging.Logging.write_log_to_file(loss_and_metrics)
-                        Logging.Logging.write_log_to_file(feature_set_column_names)
-                        Logging.Logging.write_log_to_file('Column Start 3 Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+                        Logging.Logging.write_log_to_file_selectable(loss_and_metrics)
+                        Logging.Logging.write_log_to_file_selectable(feature_set_column_names)
+                        Logging.Logging.write_log_to_file_selectable('Column Start 3 Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
 
                         if loss_and_metrics <= local_minimumMSEValue:
                             local_minimumMSEValue = loss_and_metrics
                             remove_feature_index = j
-                            Logging.Logging.write_log_to_file('local')
+                            Logging.Logging.write_log_to_file_selectable('local')
                             if local_minimumMSEValue <= best_minimumMSEValue:
-                                Logging.Logging.write_log_to_file('best')
+                                Logging.Logging.write_log_to_file_selectable('best')
                                 best_minimumMSEValue = local_minimumMSEValue
                                 minMSEFeatureList = feature_set_column_names
                                 save_model = model
@@ -302,7 +308,7 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                                     modelReg = modelArchitectureRegression(number_of_features - 1)
 
                 if (remove_feature_index >= 0):
-                    Logging.Logging.write_log_to_file('removed feature: {}'.format(remove_feature_index))
+                    Logging.Logging.write_log_to_file_selectable('removed feature: {}'.format(remove_feature_index))
                     data_frame_copy.drop(data_frame_copy.columns[[remove_feature_index]], axis=1, inplace=True)
 
             # add to dict best mse and best feature list, save the model
@@ -312,20 +318,16 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
             model_save_file_name = outputs_path + "/" + file_name + "." + model_save_file_number + ".h5"
             save_model.save(model_save_file_name)
 
-            Logging.Logging.write_log_to_file(label_suggestion)
-            Logging.Logging.write_log_to_file("End")
+            Logging.Logging.write_log_to_file_selectable(label_suggestion)
+            Logging.Logging.write_log_to_file_selectable("End")
             ft_sel_time_end = time.time()
-            Logging.Logging.write_log_to_file("Feature Selection took %.2f seconds with gpu" % (ft_sel_time_end - ft_sel_time_start))
-            Logging.Logging.write_log_to_file('Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
-
-            data_frame_copy = None
-            # get each column as label
-            label_column = None
-            gc.collect()
-            Logging.Logging.write_log_to_file("gc")
-            Logging.Logging.write_log_to_file('Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+            Logging.Logging.write_log_to_file_selectable("Feature Selection took %.2f seconds with gpu" % (ft_sel_time_end - ft_sel_time_start))
+            Logging.Logging.write_log_to_file_selectable('Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
 
             # pid,status = os.waitpid(child_pid,0)
 
+
     create_report_file(reports_path, file_name, label_mse_score, label_suggestion)
     create_details_file(outputs_path, file_name, label_suggestion)
+
+    Logging.Logging.write_log_to_file_selectable_flush()

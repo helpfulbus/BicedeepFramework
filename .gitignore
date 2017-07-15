@@ -6,3 +6,5 @@ config\.py
 *.log
 
 *.csv
+
+cuda/
