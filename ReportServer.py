@@ -9,11 +9,20 @@ from Common import Logging
 
 import config
 
+
 def selectable_feature(file_path, file_name, selected_headers, reports_path, outputs_path):
     from ReportServerAI import report
     os.nice(-20)
     os.setpriority(posix.PRIO_PROCESS, os.getpid(), -20)
     report.create_report(file_path, file_name, selected_headers, reports_path, outputs_path)
+
+
+def optimization(file_path, file_name, reports_path, outputs_path):
+    from ReportServerAI import optimization
+    os.nice(-20)
+    os.setpriority(posix.PRIO_PROCESS, os.getpid(), -20)
+    optimization.do_optimization(file_path, file_name, reports_path, outputs_path)
+
 
 def report_server_run(message):
     Logging.Logging.write_log_to_file("Read message from aws queue")
@@ -41,6 +50,13 @@ def report_server_run(message):
     except Exception as e:
         Logging.Logging.write_log_to_file(str(e))
         return
+
+    try:
+        p2 = Process(target=optimization, args=(file_path, file_name.split("/")[-1], reports_path, outputs_path,))
+        p2.start()
+        p2.join()
+    except Exception as e:
+        Logging.Logging.write_log_to_file(str(e))
 
     # Google upload results
     try:

@@ -62,7 +62,10 @@ def create_report_file(report_path, file_name, label_mse_score, label_suggestion
     for key, value in label_suggestion.items():
         data = {}
         data["part"] = key
-        data["using"] = value.tolist()
+        if isinstance(value, list):
+            data["using"] = value
+        else:
+            data["using"] = value.tolist()
         suggestions.append(data)
 
     json_file = {}
@@ -125,7 +128,7 @@ def data_to_categorical(data, label_unique_values, number_of_unique_values):
 
 # Create a neural network architecture
 def modelArchitectureRegression(input_dimension):
-    with tf.device('/gpu:0'):
+    with tf.device('/cpu:0'):
         model = Sequential()
         model.add(Dense(64, input_dim=input_dimension, kernel_initializer='normal', activation='relu'))
         model.add(BatchNormalization())
@@ -138,7 +141,7 @@ def modelArchitectureRegression(input_dimension):
 
 
 def modelArchitectureClassification(input_dimension, output_dimension):
-    with tf.device('/gpu:0'):
+    with tf.device('/cpu:0'):
         model = Sequential()
         model.add(Dense(64, input_dim=input_dimension, kernel_initializer='normal', activation='relu'))
         model.add(BatchNormalization())
@@ -165,7 +168,7 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
     Logging.Logging.write_log_to_file_selectable('Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
     ft_sel_time_start = time.time()
 
-    with tf.device('/gpu:0'):
+    with tf.device('/cpu:0'):
         label_suggestion = {}
         label_mse_score = {}
         number_of_columns = len(desired_columns_as_label)
@@ -253,11 +256,12 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                             'Column Start 2 Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
 
                         y_train = data_to_categorical(y_train, column_unique_values, number_of_unique_values)
+
                         model.fit(x_train, y_train, epochs=10, batch_size=128, verbose=0)
 
                         y_test = data_to_categorical(y_test, column_unique_values, number_of_unique_values)
-
                         accuracy = model.evaluate(x_test, y_test, batch_size=128, verbose=0)
+
                         Logging.Logging.write_log_to_file_selectable("Loss: {}, Accuracy: {} ".format(accuracy[0], accuracy[1]))
                         Logging.Logging.write_log_to_file_selectable(feature_set_column_names)
                         Logging.Logging.write_log_to_file_selectable('Column Start 3 Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
@@ -287,9 +291,10 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                         Logging.Logging.write_log_to_file_selectable(
                             'Column Start 2 Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
 
-                        model.fit(x_train, y_train, epochs=20, batch_size=128, verbose=0)
+                        model.fit(x_train, y_train, epochs=15, batch_size=128, verbose=0)
 
                         loss_and_metrics = model.evaluate(x_test, y_test, batch_size=128, verbose=0)
+
                         Logging.Logging.write_log_to_file_selectable(loss_and_metrics)
                         Logging.Logging.write_log_to_file_selectable(feature_set_column_names)
                         Logging.Logging.write_log_to_file_selectable('Column Start 3 Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
