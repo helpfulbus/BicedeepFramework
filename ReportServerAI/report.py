@@ -55,7 +55,10 @@ def create_report_file(report_path, file_name, label_mse_score, label_suggestion
     for key, value in label_mse_score.items():
         data = {}
         data["part_name"] = key
-        data["predictability"] = value
+        data["predictability"] = value[0]
+        data["classification"] = value[1]
+        if value[1]:
+            data["accuracy"] = value[2]
         part_predictability.append(data)
 
     suggestions = []
@@ -274,6 +277,7 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                             if local_minimumMSEValue <= best_minimumMSEValue:
                                 Logging.Logging.write_log_to_file_selectable('best')
                                 best_minimumMSEValue = local_minimumMSEValue
+                                best_acc = accuracy[1]
                                 minMSEFeatureList = feature_set_column_names
                                 save_model = model
 
@@ -318,7 +322,10 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
 
             # add to dict best mse and best feature list, save the model
             label_suggestion[label_column_name] = minMSEFeatureList
-            label_mse_score[label_column_name] = best_minimumMSEValue
+            if classification:
+                label_mse_score[label_column_name] = (best_minimumMSEValue, classification, best_acc)
+            else:
+                label_mse_score[label_column_name] = (best_minimumMSEValue, classification)
             model_save_file_number = getModelNumber(i + 1)
             model_save_file_name = outputs_path + "/" + file_name + "." + model_save_file_number + ".h5"
             save_model.save(model_save_file_name)

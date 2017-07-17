@@ -133,7 +133,8 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
     label_mse_score = {}
     for i in range(0, len(data['part_predictability'])):
         score = data['part_predictability'][i]['predictability']
-        label_mse_score[data['part_predictability'][i]['part_name']] = score
+        classification = data['part_predictability'][i]['classification']
+        label_mse_score[data['part_predictability'][i]['part_name']] = (score, classification)
 
     desired_columns_as_label = []
     label_suggestion = {}
@@ -213,27 +214,29 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
                         Logging.Logging.write_log_to_file_optimization(t)
                         Logging.Logging.write_log_to_file_optimization(loss)
                         if (classification):
-                            val_losses.append(loss[0])
+                            val_losses.append((loss[0], loss[1]))
                         else:
-                            val_losses.append(loss)
+                            val_losses.append((loss, 0))
 
                         models.append(mod)
 
-                    T = [T[m] for m in argsort(val_losses)[0:int(n_i / eta)]]
+                    T = [T[m] for m in (argsort(val_losses, axis=0)[:,0])[0:int(n_i / eta)]]
 
                     if len(T) == 0:
                         continue
-                    models = [models[j] for j in argsort(val_losses)[0:int(n_i / eta)]]
-                    val_losses = np.sort(val_losses)
+                    models = [models[j] for j in (argsort(val_losses, axis=0)[:,0])[0:int(n_i / eta)]]
+                    val_losses = sorted(val_losses, key=lambda x: x[0])
                     end = time.time()
                     for k in range(0, int(n_i / eta)):
                         Logging.Logging.write_log_to_file_optimization("Parameters: {}, Loss: {}".format(T[k], val_losses[k]))
-                    if (len(val_losses) > 0 and len(models) > 0 and val_losses[0] < label_mse_score[label_column_name]):
+                    if (len(val_losses) > 0 and len(models) > 0 and val_losses[0][0] < label_mse_score[label_column_name][0]):
                         Logging.Logging.write_log_to_file_optimization('Found better')
                         save_model = models[0]
                         save_model.save(model_save_file_name)
-                        label_mse_score[label_column_name] = val_losses[0]
-                        report.create_report_file(reports_path, file_name, label_mse_score, label_suggestion)
+                        if classification:
+                            label_mse_score[label_column_name] = (val_losses[0][0], classification, val_losses[0][1])
+                        else:
+                            label_mse_score[label_column_name] = (val_losses[0][0], classification)
 
                     Logging.Logging.write_log_to_file_optimization("Time elapsed: {} seconds".format(end - start))
                     Logging.Logging.write_log_to_file_optimization("*****")
@@ -241,4 +244,5 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
                 gc.collect()
                 break
 
+    report.create_report_file(reports_path, file_name, label_mse_score, label_suggestion)
     Logging.Logging.write_log_to_file_optimization_flush()
