@@ -1,26 +1,17 @@
 import json
-import keras
 import pandas as pd
-import numpy as np
-import h5py
 from keras.models import Sequential
-from keras.layers import Dense, Activation
+from keras.layers import Dense
 from keras.layers.normalization import BatchNormalization
-from keras.wrappers.scikit_learn import KerasRegressor
-from sklearn.model_selection import KFold
-from sklearn.model_selection import cross_val_score
 from sklearn import model_selection
 import time
 import gc
-import resource
 import os
 import random
 from math import log
 from math import ceil
 from numpy import argsort
 from keras.layers import Dropout
-from dateutil import parser
-from dateutil.parser import parse
 from ReportServerAI import report
 from Common import Logging
 

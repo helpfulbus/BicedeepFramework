@@ -9,6 +9,38 @@ outputs_folder = "/outputs/"
 def _get_storage_client():
     return storage.Client(project=config.PROJECT_NAME)
 
+def download_query_file(file_name, model_file_name):
+    client = _get_storage_client()
+    bucket = client.bucket(config.BUCKET_NAME)
+
+    file_name_long = config.BUCKET_NAME + "/" + file_name
+
+    dir = os.path.dirname(file_name_long)
+    if not os.path.exists(dir):
+        os.system("sudo mkdir " + dir)
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+
+    model_name_long = config.BUCKET_NAME + "/" + model_file_name
+
+    dir = os.path.dirname(model_name_long)
+    if not os.path.exists(dir):
+        os.system("sudo mkdir " + dir)
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+
+
+    query_blob = bucket.get_blob(file_name)
+    model_blob = bucket.get_blob(model_file_name)
+
+    query_file = open(file_name_long, 'w')
+    model_file = open(model_name_long, 'w')
+
+    query_blob.download_to_filename(file_name_long, client)
+    model_blob.download_to_filename(model_name_long, client)
+
+    return file_name_long, model_name_long
+
 
 def download_file(file_name, email):
     client = _get_storage_client()
@@ -61,6 +93,12 @@ def upload_results(email):
         blob = bucket.blob(dest_name)
         blob.upload_from_filename(file_name_full)
 
+def upload_query_results(query_file_name):
+    client = _get_storage_client()
+    bucket = client.bucket(config.BUCKET_NAME)
+
+    blob = bucket.blob(query_file_name)
+    blob.upload_from_filename(config.BUCKET_NAME + "/" + query_file_name)
 
 def delete_local_dir():
     os.system("sudo rm -rf " + config.BUCKET_NAME)

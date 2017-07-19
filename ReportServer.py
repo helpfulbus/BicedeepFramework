@@ -51,12 +51,16 @@ def report_server_run(message):
         Logging.Logging.write_log_to_file(str(e))
         return
 
+    Logging.Logging.write_log_to_file("Feature selection completed")
+
     try:
         p2 = Process(target=optimization, args=(file_path, file_name.split("/")[-1], reports_path, outputs_path,))
         p2.start()
         p2.join()
     except Exception as e:
         Logging.Logging.write_log_to_file(str(e))
+
+    Logging.Logging.write_log_to_file("Optimization completed")
 
     # Google upload results
     try:
@@ -97,6 +101,7 @@ def report_server_run(message):
 
 
 def main():
+    Logging.Logging.init()
     Logging.Logging.write_log_to_file("Report Server Started")
     while True:
         Logging.Logging.write_log_to_file_flush()

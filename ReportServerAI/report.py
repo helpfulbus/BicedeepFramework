@@ -78,7 +78,7 @@ def create_report_file(report_path, file_name, label_mse_score, label_suggestion
     with open(report_path + "/" + file_name + ".json", 'w') as outfile:
         json.dump(json_file, outfile)
 
-def create_details_file(output_path, file_name, label_suggestion):
+def create_details_file(output_path, file_name, label_suggestion, label_types):
     # Generate details
     file_counter = 1
     for key, value in label_suggestion.items():
@@ -86,6 +86,7 @@ def create_details_file(output_path, file_name, label_suggestion):
         data = {}
         data["part"] = key
         data["using"] = value.tolist()
+        data["type"] = label_types[key]
         suggestions.append(data)
         json_file = {}
         json_file["suggestions"] = suggestions
@@ -173,6 +174,7 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
 
     with tf.device('/cpu:0'):
         label_suggestion = {}
+        label_types = {}
         label_mse_score = {}
         number_of_columns = len(desired_columns_as_label)
         for i in range(0, number_of_columns):
@@ -322,6 +324,13 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
 
             # add to dict best mse and best feature list, save the model
             label_suggestion[label_column_name] = minMSEFeatureList
+
+            label_types[label_column_name] = "number"
+            if label_column_name in string_columns:
+                label_types[label_column_name] = "string"
+            elif label_column_name in date_columns:
+                label_types[label_column_name] = "date"
+
             if classification:
                 label_mse_score[label_column_name] = (best_minimumMSEValue, classification, best_acc)
             else:
@@ -340,6 +349,6 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
 
 
     create_report_file(reports_path, file_name, label_mse_score, label_suggestion)
-    create_details_file(outputs_path, file_name, label_suggestion)
+    create_details_file(outputs_path, file_name, label_suggestion, label_types)
 
     Logging.Logging.write_log_to_file_selectable_flush()
