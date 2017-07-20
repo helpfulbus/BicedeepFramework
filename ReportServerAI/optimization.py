@@ -58,16 +58,19 @@ def get_architecture_list():
 # parameters[1] = optimizers
 # parameters[2] = activations
 # parameters[3] = regularization
+# parameters[4] = batch_size
 def get_random_hyperparameter_configuration():
     parameters = []
     arch_list = get_architecture_list()
     parameters.append(random.choice(arch_list))
-    optimizers = ['sgd', 'Adam', 'Nadam']
+    optimizers = ['sgd', 'Adam', 'Nadam', 'adadelta']
     parameters.append(random.choice(optimizers))
     activations = ['relu', 'sigmoid']
     parameters.append(random.choice(activations))
     regularization = [0, 1]  # 0: dropout, 1: batch_normalization
     parameters.append(random.choice(regularization))
+    batch_sizes = [2, 32, 128, 512, 1024]
+    parameters.append(random.choice(batch_sizes))
 
     return parameters
 
@@ -90,15 +93,15 @@ def run_then_return_val_loss(num_iters, hyperparameters, input_dim, is_classific
             model.add(Dense(output_dimension, activation='softmax'))
             model.compile(loss='categorical_crossentropy', optimizer=hyperparameters[1], metrics=['accuracy'])
 
-            model.fit(x_train, y_train, epochs=10, batch_size=128, verbose=0)
-            loss_and_metrics = model.evaluate(x_test, y_test, batch_size=128, verbose=0)
+            model.fit(x_train, y_train, epochs=10, batch_size=hyperparameters[4], verbose=0)
+            loss_and_metrics = model.evaluate(x_test, y_test, batch_size=hyperparameters[4], verbose=0)
             return loss_and_metrics, model
         else:
             model.add(Dense(1, kernel_initializer='normal'))
-            model.compile(loss='mean_absolute_error', optimizer='adam')
+            model.compile(loss='mean_absolute_error', optimizer=hyperparameters[1])
 
-            model.fit(x_train, y_train, epochs=15, batch_size=128, verbose=0)
-            loss_and_metrics = model.evaluate(x_test, y_test, batch_size=128, verbose=0)
+            model.fit(x_train, y_train, epochs=15, batch_size=hyperparameters[4], verbose=0)
+            loss_and_metrics = model.evaluate(x_test, y_test, batch_size=hyperparameters[4], verbose=0)
             return loss_and_metrics, model
 
 
@@ -137,7 +140,7 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
     data_frame = report.readData(file_path)
 
     Logging.Logging.write_log_to_file_selectable("Starting Pre Process")
-    string_columns, date_columns = report.preprocess_data(data_frame)
+    string_columns, date_columns, big_number_columns = report.preprocess_data(data_frame)
     Logging.Logging.write_log_to_file_selectable("Pre Process Ended")
 
     Logging.Logging.write_log_to_file_optimization("Optimization Has Started")

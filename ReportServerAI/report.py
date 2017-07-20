@@ -54,6 +54,9 @@ def convertFromNumber (n):
     return n.to_bytes(math.ceil(n.bit_length() / 8), 'little').decode()
 
 
+def get_nearest_power_of_2(number):
+    return math.ceil(2**math.ceil(math.log(number, 2)))
+
 def getModelNumber(number):
     strNumber = str(number)
     return ('00000' + strNumber)[len(strNumber):]
@@ -116,6 +119,7 @@ def create_details_file(output_path, file_name, label_suggestion, label_types):
 def preprocess_data(df):
     string_columns = []
     date_columns = []
+    big_number_columns = []
     data_length = len(df.columns)
     for i in range(data_length):
         col_name = df.columns[i]
@@ -129,8 +133,11 @@ def preprocess_data(df):
             else:
                 df[col_name] = df[col_name].map(convertToNumber)
                 string_columns.append(col_name)
+        else:
+            if df.iloc[0, i] > df[col_name].mean() > 10000:
+                big_number_columns.append(col_name)
 
-    return string_columns, date_columns
+    return string_columns, date_columns, big_number_columns
 
 
 #Return a categorical data from given data
@@ -146,7 +153,7 @@ def data_to_categorical(data, label_unique_values, number_of_unique_values):
 
 
 # Create a neural network architecture
-def modelArchitectureRegression(input_dimension):
+def modelArchitectureRegression(input_dimension, optimizer_input):
     with tf.device('/cpu:0'):
         model = Sequential()
         model.add(Dense(64, input_dim=input_dimension, kernel_initializer='normal', activation='relu'))
@@ -155,11 +162,11 @@ def modelArchitectureRegression(input_dimension):
         model.add(BatchNormalization())
         model.add(Dense(1, kernel_initializer='normal'))
 
-        model.compile(loss='mean_absolute_error', optimizer='adam')
+        model.compile(loss='mean_absolute_error', optimizer=optimizer_input)
         return model
 
 
-def modelArchitectureClassification(input_dimension, output_dimension):
+def modelArchitectureClassification(input_dimension, output_dimension, optimizer_input):
     with tf.device('/cpu:0'):
         model = Sequential()
         model.add(Dense(64, input_dim=input_dimension, kernel_initializer='normal', activation='relu'))
@@ -168,7 +175,7 @@ def modelArchitectureClassification(input_dimension, output_dimension):
         model.add(BatchNormalization())
         model.add(Dense(output_dimension, activation='softmax'))
 
-        model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+        model.compile(loss='categorical_crossentropy', optimizer=optimizer_input, metrics=['accuracy'])
         return model
 
 
@@ -177,7 +184,7 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
 
     preprocess_start = time.time()
     Logging.Logging.write_log_to_file_selectable("Starting Pre Process")
-    string_columns, date_columns = preprocess_data(data_frame)
+    string_columns, date_columns, big_number_columns = preprocess_data(data_frame)
     Logging.Logging.write_log_to_file_selectable("Pre Process Ended")
 
     preprocess_end = time.time()
@@ -209,9 +216,19 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
             column_unique_values = label_column.unique()
             number_of_unique_values = len(column_unique_values)
             number_of_samples = len(label_column.values)
+
             if ((number_of_unique_values / number_of_samples) < 0.2):
                 classification = True
             label_column_name = data_frame_copy.columns[label_column_index]
+
+            #if the values are big numbers, increase learning rate reduce batch size
+            if(label_column_name in string_columns or label_column_name in date_columns or label_column_name in big_number_columns):
+                preset_batch_size = 2;
+                preset_optimizer = "adadelta"
+            else:
+                preset_batch_size = get_nearest_power_of_2(number_of_samples / 100);
+                preset_optimizer = "adam"
+
             # drop label column from data frame
             data_frame_copy.drop(data_frame_copy.columns[[label_column_index]], axis=1, inplace=True)
             # add label column as last column to the data_frame
@@ -229,8 +246,8 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                 number_of_features = len(data_frame_copy.columns) - 1
 
                 if(number_of_features - 1 > 0):
-                    modelClass = modelArchitectureClassification(number_of_features - 1, number_of_unique_values)
-                    modelReg = modelArchitectureRegression(number_of_features - 1)
+                    modelClass = modelArchitectureClassification(number_of_features - 1, number_of_unique_values, preset_optimizer)
+                    modelReg = modelArchitectureRegression(number_of_features - 1, preset_optimizer)
 
                 remove_feature_index = -1
                 local_minimumMSEValue = float('inf')
@@ -269,7 +286,7 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                         if (j >= 0):
                             model = modelClass
                         else:
-                            model = modelArchitectureClassification(number_of_features, number_of_unique_values)
+                            model = modelArchitectureClassification(number_of_features, number_of_unique_values, preset_optimizer)
                         model.reset_states()
 
                         Logging.Logging.write_log_to_file_selectable(
@@ -277,10 +294,10 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
 
                         y_train = data_to_categorical(y_train, column_unique_values, number_of_unique_values)
 
-                        model.fit(x_train, y_train, epochs=10, batch_size=128, verbose=0)
+                        model.fit(x_train, y_train, epochs=10, batch_size=preset_batch_size, verbose=0)
 
                         y_test = data_to_categorical(y_test, column_unique_values, number_of_unique_values)
-                        accuracy = model.evaluate(x_test, y_test, batch_size=128, verbose=0)
+                        accuracy = model.evaluate(x_test, y_test, batch_size=preset_batch_size, verbose=0)
 
                         Logging.Logging.write_log_to_file_selectable("Loss: {}, Accuracy: {} ".format(accuracy[0], accuracy[1]))
                         Logging.Logging.write_log_to_file_selectable(feature_set_column_names)
@@ -300,21 +317,21 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
 
                                 if (number_of_features - 1 > 0):
                                     modelClass = modelArchitectureClassification(number_of_features - 1,
-                                                                             number_of_unique_values)
+                                                                             number_of_unique_values, preset_optimizer)
 
                     else:
                         if (j >= 0):
                             model = modelReg
                         else:
-                            model = modelArchitectureRegression(number_of_features)
+                            model = modelArchitectureRegression(number_of_features, preset_optimizer)
                         model.reset_states()
 
                         Logging.Logging.write_log_to_file_selectable(
                             'Column Start 2 Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
 
-                        model.fit(x_train, y_train, epochs=15, batch_size=128, verbose=0)
+                        model.fit(x_train, y_train, epochs=15, batch_size=preset_batch_size, verbose=0)
 
-                        loss_and_metrics = model.evaluate(x_test, y_test, batch_size=128, verbose=0)
+                        loss_and_metrics = model.evaluate(x_test, y_test, batch_size=preset_batch_size, verbose=0)
 
                         Logging.Logging.write_log_to_file_selectable(loss_and_metrics)
                         Logging.Logging.write_log_to_file_selectable(feature_set_column_names)
@@ -331,7 +348,7 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                                 save_model = model
 
                                 if (number_of_features - 1 > 0):
-                                    modelReg = modelArchitectureRegression(number_of_features - 1)
+                                    modelReg = modelArchitectureRegression(number_of_features - 1, preset_optimizer)
 
                 if (remove_feature_index >= 0):
                     Logging.Logging.write_log_to_file_selectable('removed feature: {}'.format(remove_feature_index))
