@@ -15,6 +15,7 @@ import os
 import math
 import datetime as dt
 import json
+from collections import OrderedDict
 from dateutil import parser
 from dateutil.parser import parse
 from Common import Logging
@@ -23,6 +24,13 @@ import tensorflow as tf
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 sess = tf.Session(config=tf.ConfigProto(inter_op_parallelism_threads=128))
 
+class LastUpdatedOrderedDict(OrderedDict):
+    'Store items in the order the keys were last added'
+
+    def __setitem__(self, key, value):
+        if key in self:
+            del self[key]
+        OrderedDict.__setitem__(self, key, value)
 
 # Read given file from filepath and return
 def readData(filePath):
@@ -52,24 +60,30 @@ def getModelNumber(number):
 
 def create_report_file(report_path, file_name, label_mse_score, label_suggestion):
     part_predictability = []
+    file_counter = 1
     for key, value in label_mse_score.items():
         data = {}
+        data["id"] = file_counter
         data["part_name"] = key
         data["predictability"] = value[0]
         data["classification"] = value[1]
         if value[1]:
             data["accuracy"] = value[2]
         part_predictability.append(data)
+        file_counter += 1
 
     suggestions = []
+    file_counter = 1
     for key, value in label_suggestion.items():
         data = {}
+        data["id"] = file_counter
         data["part"] = key
         if isinstance(value, list):
             data["using"] = value
         else:
             data["using"] = value.tolist()
         suggestions.append(data)
+        file_counter += 1
 
     json_file = {}
     json_file["part_predictability"] = part_predictability
@@ -84,6 +98,7 @@ def create_details_file(output_path, file_name, label_suggestion, label_types):
     for key, value in label_suggestion.items():
         suggestions = []
         data = {}
+        data["id"] = file_counter
         data["part"] = key
         data["using"] = value.tolist()
         data["type"] = label_types[key]
@@ -173,9 +188,9 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
     ft_sel_time_start = time.time()
 
     with tf.device('/cpu:0'):
-        label_suggestion = {}
-        label_types = {}
-        label_mse_score = {}
+        label_suggestion = LastUpdatedOrderedDict()
+        label_types = LastUpdatedOrderedDict()
+        label_mse_score = LastUpdatedOrderedDict()
         number_of_columns = len(desired_columns_as_label)
         for i in range(0, number_of_columns):
             early_end = False;
@@ -192,7 +207,7 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
             # decide whether regression or classification will be applied to the column
             classification = False
             column_unique_values = label_column.unique()
-            number_of_unique_values = len(label_column.unique())
+            number_of_unique_values = len(column_unique_values)
             number_of_samples = len(label_column.values)
             if ((number_of_unique_values / number_of_samples) < 0.2):
                 classification = True

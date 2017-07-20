@@ -3,8 +3,13 @@ import json
 import numpy as np
 import pandas as pd
 import datetime as dt
+import os
+from Common import Logging
 from keras.models import load_model
 from dateutil.parser import parse
+
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
 def is_date(string):
@@ -53,13 +58,13 @@ def calculate_query(quey_file_path, model_file_path):
     if (data['result_type'] == "string"):
         result = convertFromNumber(result)
     elif (data['result_type'] == "date"):
-        result = str(dt.datetime.date.fromordinal(result))
+        result = str(dt.datetime.fromordinal(result))
     else:
         result = str(result)
 
     data['results'] = result
 
-    print(str(data))
+    Logging.Logging.write_log_to_file_queueserver(str(data))
     with open(quey_file_path, 'w') as output_file:
         json.dump(data, output_file)
 

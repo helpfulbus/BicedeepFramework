@@ -136,6 +136,9 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
 
     data_frame = report.readData(file_path)
 
+    Logging.Logging.write_log_to_file_selectable("Starting Pre Process")
+    string_columns, date_columns = report.preprocess_data(data_frame)
+    Logging.Logging.write_log_to_file_selectable("Pre Process Ended")
 
     Logging.Logging.write_log_to_file_optimization("Optimization Has Started")
     with tf.device('/cpu:0'):
