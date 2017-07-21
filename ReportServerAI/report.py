@@ -95,7 +95,7 @@ def create_report_file(report_path, file_name, label_mse_score, label_suggestion
     with open(report_path + "/" + file_name + ".json", 'w') as outfile:
         json.dump(json_file, outfile)
 
-def create_details_file(output_path, file_name, label_suggestion, label_types):
+def create_details_file(output_path, file_name, label_suggestion, label_types, label_category_dict):
     # Generate details
     file_counter = 1
     for key, value in label_suggestion.items():
@@ -105,6 +105,13 @@ def create_details_file(output_path, file_name, label_suggestion, label_types):
         data["part"] = key
         data["using"] = value.tolist()
         data["type"] = label_types[key]
+
+        if len(label_category_dict[key]) > 0:
+            category_data = {}
+            for category_key, category_value in label_category_dict[key].items():
+                category_data[str(category_key)] = str(category_value)
+            data["categories"] = category_data
+
         suggestions.append(data)
         json_file = {}
         json_file["suggestions"] = suggestions
@@ -141,15 +148,15 @@ def preprocess_data(df):
 
 
 #Return a categorical data from given data
-def data_to_categorical(data, label_unique_values, number_of_unique_values):
+def data_to_categorical(data, label_unique_values, number_of_unique_values, dict = {}):
     len_of_data = len(data)
     categorical_data = np.zeros((len_of_data, number_of_unique_values))
-    dict = {}
-    for i in range(0, len(label_unique_values)):
-        dict[label_unique_values[i]] = i
+    if(len(dict) == 0):
+        for i in range(0, len(label_unique_values)):
+            dict[label_unique_values[i]] = i
     for i in range(0, len_of_data):
         categorical_data[i][dict[data[i]]] = 1
-    return categorical_data
+    return categorical_data, dict
 
 
 # Create a neural network architecture
@@ -198,6 +205,7 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
         label_suggestion = LastUpdatedOrderedDict()
         label_types = LastUpdatedOrderedDict()
         label_mse_score = LastUpdatedOrderedDict()
+        label_category_dict = LastUpdatedOrderedDict()
         number_of_columns = len(desired_columns_as_label)
         for i in range(0, number_of_columns):
             early_end = False;
@@ -221,13 +229,14 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                 classification = True
             label_column_name = data_frame_copy.columns[label_column_index]
 
+            categorical_dict = {}
+            preset_batch_size = get_nearest_power_of_2(number_of_samples / 100);
+            preset_optimizer = "adam"
             #if the values are big numbers, increase learning rate reduce batch size
-            if(label_column_name in string_columns or label_column_name in date_columns or label_column_name in big_number_columns):
+            if(label_column_name in date_columns or label_column_name in big_number_columns):
                 preset_batch_size = 2;
-                preset_optimizer = "adadelta"
-            else:
-                preset_batch_size = get_nearest_power_of_2(number_of_samples / 100);
-                preset_optimizer = "adam"
+                preset_optimizer = keras.optimizers.Adadelta(lr=1.0, rho=0.95, epsilon=1e-08, decay=0.01)
+
 
             # drop label column from data frame
             data_frame_copy.drop(data_frame_copy.columns[[label_column_index]], axis=1, inplace=True)
@@ -292,11 +301,11 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                         Logging.Logging.write_log_to_file_selectable(
                             'Column Start 2 Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
 
-                        y_train = data_to_categorical(y_train, column_unique_values, number_of_unique_values)
+                        y_train, categorical_dict = data_to_categorical(y_train, column_unique_values, number_of_unique_values, categorical_dict)
 
                         model.fit(x_train, y_train, epochs=10, batch_size=preset_batch_size, verbose=0)
 
-                        y_test = data_to_categorical(y_test, column_unique_values, number_of_unique_values)
+                        y_test, categorical_dict = data_to_categorical(y_test, column_unique_values, number_of_unique_values, categorical_dict)
                         accuracy = model.evaluate(x_test, y_test, batch_size=preset_batch_size, verbose=0)
 
                         Logging.Logging.write_log_to_file_selectable("Loss: {}, Accuracy: {} ".format(accuracy[0], accuracy[1]))
@@ -365,8 +374,10 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
 
             if classification:
                 label_mse_score[label_column_name] = (best_minimumMSEValue, classification, best_acc)
+                label_category_dict[label_column_name] = categorical_dict
             else:
                 label_mse_score[label_column_name] = (best_minimumMSEValue, classification)
+                label_category_dict[label_column_name] = {}
             model_save_file_number = getModelNumber(i + 1)
             model_save_file_name = outputs_path + "/" + file_name + "." + model_save_file_number + ".h5"
             save_model.save(model_save_file_name)
@@ -381,6 +392,6 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
 
 
     create_report_file(reports_path, file_name, label_mse_score, label_suggestion)
-    create_details_file(outputs_path, file_name, label_suggestion, label_types)
+    create_details_file(outputs_path, file_name, label_suggestion, label_types, label_category_dict)
 
     Logging.Logging.write_log_to_file_selectable_flush()

@@ -9,6 +9,10 @@ outputs_folder = "/outputs/"
 def _get_storage_client():
     return storage.Client(project=config.PROJECT_NAME)
 
+def get_model_details_name_by_model_name(model_file_name):
+    splitted_name = model_file_name.split("/")
+    return splitted_name[0] + "/details/" + splitted_name[2] + ".json"
+
 def download_query_file(file_name, model_file_name):
     client = _get_storage_client()
     bucket = client.bucket(config.BUCKET_NAME)
@@ -21,6 +25,7 @@ def download_query_file(file_name, model_file_name):
     if not os.path.exists(dir):
         os.makedirs(dir)
 
+
     model_name_long = config.BUCKET_NAME + "/" + model_file_name
 
     dir = os.path.dirname(model_name_long)
@@ -29,17 +34,29 @@ def download_query_file(file_name, model_file_name):
     if not os.path.exists(dir):
         os.makedirs(dir)
 
+    model_details_name = get_model_details_name_by_model_name(model_file_name)
+    model_details_long = config.BUCKET_NAME + "/" + model_details_name
+
+    dir = os.path.dirname(model_details_long)
+    if not os.path.exists(dir):
+        os.system("sudo mkdir " + dir)
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+
 
     query_blob = bucket.get_blob(file_name)
     model_blob = bucket.get_blob(model_file_name)
+    model_details_blob = bucket.get_blob(model_details_name)
 
     query_file = open(file_name_long, 'w')
     model_file = open(model_name_long, 'w')
+    model_details_file = open(model_details_long, 'w')
 
     query_blob.download_to_filename(file_name_long, client)
     model_blob.download_to_filename(model_name_long, client)
+    model_details_blob.download_to_filename(model_details_long, client)
 
-    return file_name_long, model_name_long
+    return file_name_long, model_name_long, model_details_long
 
 
 def download_file(file_name, email):

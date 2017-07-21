@@ -8,11 +8,11 @@ from Common import Aws
 from Common import Logging
 
 
-def query_calculate(quey_file_path, model_file_path):
+def query_calculate(quey_file_path, model_file_path, model_details_path):
     from QueryServer import query
     os.nice(-20)
     os.setpriority(posix.PRIO_PROCESS, os.getpid(), -20)
-    query.calculate_query(quey_file_path, model_file_path)
+    query.calculate_query(quey_file_path, model_file_path, model_details_path)
 
 
 def queue_server_run(message):
@@ -26,17 +26,18 @@ def queue_server_run(message):
 
     file_path = ""
     try:
-        [quey_file_path, model_file_path] = GoogleStorage.download_query_file(query_file_name, model_file_name)
+        [quey_file_path, model_file_path, model_details_path] = GoogleStorage.download_query_file(query_file_name, model_file_name)
     except Exception as e:
         Logging.Logging.write_log_to_file_queueserver(str(e))
         return
 
     Logging.Logging.write_log_to_file_queueserver("Query file downloaded : " + query_file_name)
     Logging.Logging.write_log_to_file_queueserver("Model file downloaded : " + model_file_name)
+    Logging.Logging.write_log_to_file_queueserver("Model details file downloaded : " + model_file_name + ".json")
 
     # Calculations
     try:
-        p = Process(target=query_calculate, args=(quey_file_path, model_file_path,))
+        p = Process(target=query_calculate, args=(quey_file_path, model_file_path, model_details_path,))
         p.start()
         p.join()
     except Exception as e:

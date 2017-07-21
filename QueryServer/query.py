@@ -28,7 +28,7 @@ def convertFromNumber(n):
     return n.to_bytes(math.ceil(n.bit_length() / 8), 'little').decode()
 
 
-def calculate_query(quey_file_path, model_file_path):
+def calculate_query(quey_file_path, model_file_path, model_details_path):
 
     model = load_model(model_file_path)
 
@@ -53,7 +53,19 @@ def calculate_query(quey_file_path, model_file_path):
 
     predict = model.predict(x_query, batch_size=1)
 
-    result = predict[0][0]
+
+    if(model.outputs[0].shape[1] > 1): # classification
+        with open(model_details_path) as data_file:
+            details_data = json.load(data_file)
+            category_dict = details_data['suggestions'][0]['categories']
+
+        best_index = predict[0].argmax()
+        for key, value in category_dict.items():
+            if(value == str(best_index)):
+                result = key
+
+    else:
+        result = predict[0][0]
 
     if (data['result_type'] == "string"):
         result = convertFromNumber(result)
