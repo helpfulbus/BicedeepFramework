@@ -68,7 +68,7 @@ def calculate_query(quey_file_path, model_file_path, model_details_path):
         result = predict[0][0]
 
     if (data['result_type'] == "string"):
-        result = convertFromNumber(result)
+        result = convertFromNumber(int(result))
     elif (data['result_type'] == "date"):
         result = str(dt.datetime.fromordinal(result))
     else:

@@ -90,7 +90,7 @@ def main():
             queue_server_run(message)
         else:
             if Timing.Timing.DoShutDown():
-                Logging.Logging.Logging.write_log_to_file_queueserver("Shutting down the instance")
+                Logging.Logging.write_log_to_file_queueserver("Shutting down the instance")
                 try:
                     Aws.stop_instance(config.QUEUE_INSTANCE_ID)
                     Logging.Logging.write_log_to_file_queueserver_flush()

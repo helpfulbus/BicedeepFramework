@@ -2,10 +2,10 @@ import datetime
 import os
 
 class Logging:
-    f = open('logs/reportserver.log', 'a')
-    f2 = open('logs/selectablefeature.log', 'a')
-    f3 = open('logs/optimization.log', 'a')
-    f4 = open('logs/queueserver.log', 'a')
+    f = open('reportserver.log', 'a')
+    f2 = open('selectablefeature.log', 'a')
+    f3 = open('optimization.log', 'a')
+    f4 = open('queueserver.log', 'a')
 
     @staticmethod
     def init():
