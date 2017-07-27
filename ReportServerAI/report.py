@@ -1,7 +1,7 @@
 import keras
 import pandas as pd
 import numpy as np
-import h5py
+from keras.layers import Dropout
 from keras.models import Sequential
 from keras.layers import Dense, Activation
 from keras.layers.normalization import BatchNormalization
@@ -15,9 +15,11 @@ import os
 import math
 import datetime as dt
 import json
+import locale
 from collections import OrderedDict
 from dateutil import parser
 from dateutil.parser import parse
+from decimal import *
 from Common import Logging
 
 import tensorflow as tf
@@ -45,13 +47,27 @@ def is_date(string):
     except ValueError:
         return False
 
+def is_number(input):
+    try:
+        int(input.replace(',', ''))
+        return True
+    except:
+        return False
+
+def to_comma_int(input):
+    return int(input.replace(',', ''))
 
 def convertToNumber (s):
-    return int.from_bytes(s.encode(), 'little')
+    int_value = int.from_bytes(s.encode(), 'big')
+    int_len = len(str(int_value))
+    return Decimal(int_value) / Decimal(math.pow(10, int_len - 1))
 
 
 def convertFromNumber (n):
-    return n.to_bytes(math.ceil(n.bit_length() / 8), 'little').decode()
+    if(n == Decimal("nan")):
+        return "NAN"
+    int_value = int(str(n).replace(".", ""))
+    return int_value.to_bytes(math.ceil(int_value.bit_length() / 8), 'big').decode(errors='ignore')
 
 
 def get_nearest_power_of_2(number):
@@ -61,14 +77,21 @@ def getModelNumber(number):
     strNumber = str(number)
     return ('00000' + strNumber)[len(strNumber):]
 
-def create_report_file(report_path, file_name, label_mse_score, label_suggestion):
+def create_report_file(report_path, file_name, label_mse_score, label_suggestion, label_types):
     part_predictability = []
     file_counter = 1
     for key, value in label_mse_score.items():
         data = {}
         data["id"] = file_counter
         data["part_name"] = key
+        data["type"] = label_types[key]
         data["predictability"] = value[0]
+
+        #if(data["type"] == "string"):
+            #data["predictability_conv"] = convertFromNumber(Decimal(data["predictability"]))
+        if(data["type"] == "date"):
+            data["predictability_conv"] = str(dt.datetime.fromordinal(int(round(data["predictability"]))))
+
         data["classification"] = value[1]
         if value[1]:
             data["accuracy"] = value[2]
@@ -120,6 +143,9 @@ def create_details_file(output_path, file_name, label_suggestion, label_types, l
             json.dump(json_file, outfile)
         file_counter += 1
 
+def is_string(inp):
+    return isinstance(inp, str)
+
 # Convert number to datetime, and string:
 # data_df['Country']= data_df['Country'].map(dt.datetime.fromordinal)
 # data_df['Country']= data_df['Country'].strftime('%m/%d/%Y')
@@ -131,9 +157,15 @@ def preprocess_data(df):
     for i in range(data_length):
         col_name = df.columns[i]
         # Check if there is a column with string values
-        if (isinstance(df.iloc[0, i], str)):
+
+        is_string_column = df[col_name].apply(lambda x: is_string(x)).all()
+        is_number_column = df[col_name].apply(lambda x: is_number(x)).all()
+
+        if (is_string_column and not is_number_column):
+
+            is_date_column = df[col_name].apply(lambda x: is_date(x)).all()
             # Check if string value is a date
-            if (is_date(df.iloc[0, i])):
+            if (is_date_column):
                 df[col_name] = pd.to_datetime(df[col_name])
                 df[col_name] = df[col_name].map(dt.datetime.toordinal)
                 date_columns.append(col_name)
@@ -229,6 +261,9 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                 classification = True
             label_column_name = data_frame_copy.columns[label_column_index]
 
+            if(label_column_name in string_columns):
+                classification = True
+
             categorical_dict = {}
             preset_batch_size = get_nearest_power_of_2(number_of_samples / 100);
             preset_optimizer = "adam"
@@ -313,6 +348,9 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                         Logging.Logging.write_log_to_file_selectable('Column Start 3 Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
 
 
+                        if(np.isnan(accuracy[0])):
+                            accuracy[0] = float('inf')
+
                         if accuracy[0] <= local_minimumMSEValue:
                             local_minimumMSEValue = accuracy[0]
                             remove_feature_index = j
@@ -345,6 +383,9 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                         Logging.Logging.write_log_to_file_selectable(loss_and_metrics)
                         Logging.Logging.write_log_to_file_selectable(feature_set_column_names)
                         Logging.Logging.write_log_to_file_selectable('Column Start 3 Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+
+                        if(np.isnan(loss_and_metrics)):
+                            loss_and_metrics = float('inf')
 
                         if loss_and_metrics <= local_minimumMSEValue:
                             local_minimumMSEValue = loss_and_metrics
@@ -387,11 +428,9 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
             ft_sel_time_end = time.time()
             Logging.Logging.write_log_to_file_selectable("Feature Selection took %.2f seconds with gpu" % (ft_sel_time_end - ft_sel_time_start))
             Logging.Logging.write_log_to_file_selectable('Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+            Logging.Logging.write_log_to_file_selectable_flush()
 
-            # pid,status = os.waitpid(child_pid,0)
-
-
-    create_report_file(reports_path, file_name, label_mse_score, label_suggestion)
+    create_report_file(reports_path, file_name, label_mse_score, label_suggestion, label_types)
     create_details_file(outputs_path, file_name, label_suggestion, label_types, label_category_dict)
 
     Logging.Logging.write_log_to_file_selectable_flush()

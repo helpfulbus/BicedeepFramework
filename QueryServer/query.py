@@ -4,28 +4,15 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 import os
+import locale
 from Common import Logging
+from ReportServerAI import report
 from keras.models import load_model
 from dateutil.parser import parse
+from decimal import *
 
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-
-
-def is_date(string):
-    try:
-        parse(string)
-        return True
-    except:
-        return False
-
-
-def convertToNumber(s):
-    return int.from_bytes(s.encode(), 'little')
-
-
-def convertFromNumber(n):
-    return n.to_bytes(math.ceil(n.bit_length() / 8), 'little').decode()
 
 
 def calculate_query(quey_file_path, model_file_path, model_details_path):
@@ -42,10 +29,12 @@ def calculate_query(quey_file_path, model_file_path, model_details_path):
         try:
             x_value = float(x_value)
         except:
-            if is_date(x_value):
+            if report.is_number(x_value):
+                x_value = report.to_comma_int(x_value)
+            if report.is_date(x_value):
                 x_value = pd.to_datetime(x_value).toordinal()
             else:
-                x_value = convertToNumber(x_value)
+                x_value = report.convertToNumber(x_value)
 
         x_query = np.insert(x_query, len(x_query), x_value)
 
@@ -65,10 +54,10 @@ def calculate_query(quey_file_path, model_file_path, model_details_path):
                 result = key
 
     else:
-        result = predict[0][0]
+        result = float(predict[0][0])
 
     if (data['result_type'] == "string"):
-        result = convertFromNumber(int(result))
+        result = report.convertFromNumber(Decimal(result))
     elif (data['result_type'] == "date"):
         result = str(dt.datetime.fromordinal(result))
     else:

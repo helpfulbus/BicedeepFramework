@@ -121,14 +121,28 @@ def get_remove_label_list(label_list, suggestions, label_name):
 
 
 def do_optimization(file_path, file_name, reports_path, outputs_path):
+
+    data_frame = report.readData(file_path)
+
+    Logging.Logging.write_log_to_file_selectable("Starting Pre Process")
+    string_columns, date_columns, big_number_columns = report.preprocess_data(data_frame)
+    Logging.Logging.write_log_to_file_selectable("Pre Process Ended")
+
     with open(reports_path + "/" + file_name + ".json") as data_file:
         data = json.load(data_file)
 
     label_mse_score = {}
+    label_types = {}
     for i in range(0, len(data['part_predictability'])):
         score = data['part_predictability'][i]['predictability']
         classification = data['part_predictability'][i]['classification']
-        label_mse_score[data['part_predictability'][i]['part_name']] = (score, classification)
+
+        if(classification):
+            accuracy = data['part_predictability'][i]['accuracy']
+            label_mse_score[data['part_predictability'][i]['part_name']] = (score, classification, accuracy)
+        else:
+            label_mse_score[data['part_predictability'][i]['part_name']] = (score, classification)
+        label_types[data['part_predictability'][i]['part_name']] = data['part_predictability'][i]['type']
 
     desired_columns_as_label = []
     label_suggestion = {}
@@ -137,11 +151,6 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
         label_suggestion[data['suggestions'][i]['part']] = suggestions
         desired_columns_as_label.append(data['suggestions'][i]['part'])
 
-    data_frame = report.readData(file_path)
-
-    Logging.Logging.write_log_to_file_selectable("Starting Pre Process")
-    string_columns, date_columns, big_number_columns = report.preprocess_data(data_frame)
-    Logging.Logging.write_log_to_file_selectable("Pre Process Ended")
 
     Logging.Logging.write_log_to_file_optimization("Optimization Has Started")
     with tf.device('/cpu:0'):
@@ -241,5 +250,7 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
                 gc.collect()
                 break
 
-    report.create_report_file(reports_path, file_name, label_mse_score, label_suggestion)
+            Logging.Logging.write_log_to_file_optimization_flush()
+
+    report.create_report_file(reports_path, file_name, label_mse_score, label_suggestion, label_types)
     Logging.Logging.write_log_to_file_optimization_flush()
