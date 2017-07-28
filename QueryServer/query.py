@@ -31,7 +31,7 @@ def calculate_query(quey_file_path, model_file_path, model_details_path):
         except:
             if report.is_number(x_value):
                 x_value = report.to_comma_int(x_value)
-            if report.is_date(x_value):
+            elif report.is_date(x_value):
                 x_value = pd.to_datetime(x_value).toordinal()
             else:
                 x_value = report.convertToNumber(x_value)

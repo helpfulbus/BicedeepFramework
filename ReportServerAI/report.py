@@ -57,10 +57,14 @@ def is_number(input):
 def to_comma_int(input):
     return int(input.replace(',', ''))
 
-def convertToNumber (s):
+
+def insert_second_dot(input):
+    return input[:1] + "." + input[1:]
+
+
+def convertToNumber(s):
     int_value = int.from_bytes(s.encode(), 'big')
-    int_len = len(str(int_value))
-    return Decimal(int_value) / Decimal(math.pow(10, int_len - 1))
+    return Decimal(insert_second_dot(str(int_value)))
 
 
 def convertFromNumber (n):
@@ -172,8 +176,12 @@ def preprocess_data(df):
             else:
                 df[col_name] = df[col_name].map(convertToNumber)
                 string_columns.append(col_name)
+        elif is_number_column:
+            df[col_name] = df[col_name].map(to_comma_int)
+            if df[col_name].mean() > 100000:
+                big_number_columns.append(col_name)
         else:
-            if df.iloc[0, i] > df[col_name].mean() > 10000:
+            if df[col_name].mean() > 100000:
                 big_number_columns.append(col_name)
 
     return string_columns, date_columns, big_number_columns
@@ -181,6 +189,11 @@ def preprocess_data(df):
 
 #Return a categorical data from given data
 def data_to_categorical(data, label_unique_values, number_of_unique_values, dict = {}):
+
+    if(number_of_unique_values == 1):
+        number_of_unique_values = 2
+        np.append(label_unique_values, label_unique_values[0] + 1)
+
     len_of_data = len(data)
     categorical_data = np.zeros((len_of_data, number_of_unique_values))
     if(len(dict) == 0):
@@ -207,6 +220,8 @@ def modelArchitectureRegression(input_dimension, optimizer_input):
 
 def modelArchitectureClassification(input_dimension, output_dimension, optimizer_input):
     with tf.device('/cpu:0'):
+        if(output_dimension < 2):
+            output_dimension = 2
         model = Sequential()
         model.add(Dense(64, input_dim=input_dimension, kernel_initializer='normal', activation='relu'))
         model.add(BatchNormalization())

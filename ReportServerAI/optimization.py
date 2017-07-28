@@ -90,6 +90,8 @@ def run_then_return_val_loss(num_iters, hyperparameters, input_dim, is_classific
             else:
                 model.add(Dropout(0.1))
         if (is_classification):
+            if(output_dimension < 2):
+                output_dimension = 2
             model.add(Dense(output_dimension, activation='softmax'))
             model.compile(loss='categorical_crossentropy', optimizer=hyperparameters[1], metrics=['accuracy'])
 
