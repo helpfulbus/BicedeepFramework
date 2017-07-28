@@ -8,3 +8,5 @@ config\.py
 *.csv
 
 cuda/
+
+\.idea/

@@ -133,6 +133,10 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
     with open(reports_path + "/" + file_name + ".json") as data_file:
         data = json.load(data_file)
 
+    id_name_dict = report.LastUpdatedOrderedDict()
+    for i in range(0, len(data['part_predictability'])):
+        id_name_dict[i] = data['part_predictability'][i]['part_name']
+
     label_mse_score = {}
     label_types = {}
     for i in range(0, len(data['part_predictability'])):
@@ -254,5 +258,12 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
 
             Logging.Logging.write_log_to_file_optimization_flush()
 
-    report.create_report_file(reports_path, file_name, label_mse_score, label_suggestion, label_types)
+    label_mse_score_ordered = report.LastUpdatedOrderedDict()
+    label_suggestion_ordered = report.LastUpdatedOrderedDict()
+
+    for key, value in id_name_dict.items():
+        label_mse_score_ordered[value] = label_mse_score[value]
+        label_suggestion_ordered[value] = label_suggestion[value]
+
+    report.create_report_file(reports_path, file_name, label_mse_score_ordered, label_suggestion_ordered, label_types)
     Logging.Logging.write_log_to_file_optimization_flush()
