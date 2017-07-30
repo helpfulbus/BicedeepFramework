@@ -59,7 +59,7 @@ def calculate_query(quey_file_path, model_file_path, model_details_path):
     if (data['result_type'] == "string"):
         result = report.convertFromNumber(Decimal(result))
     elif (data['result_type'] == "date"):
-        result = str(dt.datetime.fromordinal(result))
+        result = str(dt.datetime.fromordinal(int(result)))
     else:
         result = str(result)
 

@@ -171,9 +171,14 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
             column_unique_values = label_column.unique()
             number_of_unique_values = len(label_column.unique())
             number_of_samples = len(label_column.values)
+
             if ((number_of_unique_values / number_of_samples) < 0.2):
                 classification = True
             label_column_name = data_frame_copy.columns[label_column_index]
+
+            if(label_column_name in string_columns or label_column_name in date_columns):
+                classification = True
+
             # drop label column from data frame
             data_frame_copy.drop(data_frame_copy.columns[[label_column_index]], axis=1, inplace=True)
             # add label column as last column to the data_frame
@@ -195,8 +200,8 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
             x_train, x_test, y_train, y_test = model_selection.train_test_split(X, Y, test_size=0.2, random_state=42)
 
             if (classification):
-                y_train, category_dict = report.data_to_categorical(y_train, column_unique_values, number_of_unique_values)
-                y_test, category_dict = report.data_to_categorical(y_test, column_unique_values, number_of_unique_values)
+                y_train = report.data_to_categorical(y_train, column_unique_values, number_of_unique_values)
+                y_test = report.data_to_categorical(y_test, column_unique_values, number_of_unique_values)
 
             Logging.Logging.write_log_to_file_optimization("Optimization Start for : {}".format(label_column_name))
 

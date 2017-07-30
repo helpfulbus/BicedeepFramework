@@ -188,7 +188,7 @@ def preprocess_data(df):
 
 
 #Return a categorical data from given data
-def data_to_categorical(data, label_unique_values, number_of_unique_values, dict = {}):
+def data_to_categorical(data, label_unique_values, number_of_unique_values):
 
     if(number_of_unique_values == 1):
         number_of_unique_values = 2
@@ -196,12 +196,15 @@ def data_to_categorical(data, label_unique_values, number_of_unique_values, dict
 
     len_of_data = len(data)
     categorical_data = np.zeros((len_of_data, number_of_unique_values))
-    if(len(dict) == 0):
-        for i in range(0, len(label_unique_values)):
-            dict[label_unique_values[i]] = i
+    dict = {}
+    for i in range(0, len(label_unique_values)):
+        dict[label_unique_values[i]] = i
     for i in range(0, len_of_data):
-        categorical_data[i][dict[data[i]]] = 1
-    return categorical_data, dict
+        try:
+            categorical_data[i][dict[data[i]]] = 1
+        except:
+            print("error")
+    return categorical_data
 
 
 # Create a neural network architecture
@@ -276,7 +279,7 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                 classification = True
             label_column_name = data_frame_copy.columns[label_column_index]
 
-            if(label_column_name in string_columns):
+            if(label_column_name in string_columns or label_column_name in date_columns):
                 classification = True
 
             categorical_dict = {}
@@ -351,11 +354,11 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                         Logging.Logging.write_log_to_file_selectable(
                             'Column Start 2 Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
 
-                        y_train, categorical_dict = data_to_categorical(y_train, column_unique_values, number_of_unique_values, categorical_dict)
+                        y_train = data_to_categorical(y_train, column_unique_values, number_of_unique_values)
 
                         model.fit(x_train, y_train, epochs=10, batch_size=preset_batch_size, verbose=0)
 
-                        y_test, categorical_dict = data_to_categorical(y_test, column_unique_values, number_of_unique_values, categorical_dict)
+                        y_test = data_to_categorical(y_test, column_unique_values, number_of_unique_values)
                         accuracy = model.evaluate(x_test, y_test, batch_size=preset_batch_size, verbose=0)
 
                         Logging.Logging.write_log_to_file_selectable("Loss: {}, Accuracy: {} ".format(accuracy[0], accuracy[1]))
