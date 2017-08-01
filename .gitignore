@@ -10,3 +10,9 @@ config\.py
 cuda/
 
 \.idea/
+
+*.h5
+
+elated-discovery-5100/m@m\.com/outputs/
+
+elated-discovery-5100/m@m\.com/reports/

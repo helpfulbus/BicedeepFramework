@@ -186,9 +186,14 @@ def preprocess_data(df):
 
     return string_columns, date_columns, big_number_columns
 
+def get_categorical_dict(label_unique_values):
+    cate_dict = {}
+    for i in range(0, len(label_unique_values)):
+        cate_dict[label_unique_values[i]] = i
+    return cate_dict
 
 #Return a categorical data from given data
-def data_to_categorical(data, label_unique_values, number_of_unique_values):
+def data_to_categorical(data, label_unique_values, number_of_unique_values, data_to_cate_dict):
 
     if(number_of_unique_values == 1):
         number_of_unique_values = 2
@@ -196,12 +201,9 @@ def data_to_categorical(data, label_unique_values, number_of_unique_values):
 
     len_of_data = len(data)
     categorical_data = np.zeros((len_of_data, number_of_unique_values))
-    dict = {}
-    for i in range(0, len(label_unique_values)):
-        dict[label_unique_values[i]] = i
     for i in range(0, len_of_data):
         try:
-            categorical_data[i][dict[data[i]]] = 1
+            categorical_data[i][data_to_cate_dict[data[i]]] = 1
         except:
             print("error")
     return categorical_data
@@ -257,6 +259,7 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
         label_mse_score = LastUpdatedOrderedDict()
         label_category_dict = LastUpdatedOrderedDict()
         number_of_columns = len(desired_columns_as_label)
+        desired_columns_as_label = list(map((lambda x: x.strip("\n ,")), desired_columns_as_label))
         for i in range(0, number_of_columns):
             early_end = False;
 
@@ -267,7 +270,10 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
             # copy data frame to make changes on copy
             data_frame_copy = data_frame.copy(deep=True)
             # get each column as label
-            label_column_index = data_frame_copy.columns.get_loc(desired_columns_as_label[i])
+
+            dfc_columns = list(map((lambda x: x.strip("\n ,")), data_frame_copy.columns))
+
+            label_column_index = dfc_columns.index(desired_columns_as_label[i])
             label_column = data_frame_copy.iloc[:, label_column_index]
             # decide whether regression or classification will be applied to the column
             classification = False
@@ -282,11 +288,13 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
             if(label_column_name in string_columns or label_column_name in date_columns):
                 classification = True
 
-            categorical_dict = {}
+            if(classification):
+                categorical_dict = get_categorical_dict(column_unique_values)
+
             preset_batch_size = get_nearest_power_of_2(number_of_samples / 100);
             preset_optimizer = "adam"
             #if the values are big numbers, increase learning rate reduce batch size
-            if(label_column_name in date_columns or label_column_name in big_number_columns):
+            if(label_column_name in big_number_columns):
                 preset_batch_size = 2;
                 preset_optimizer = keras.optimizers.Adadelta(lr=1.0, rho=0.95, epsilon=1e-08, decay=0.01)
 
@@ -354,11 +362,11 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                         Logging.Logging.write_log_to_file_selectable(
                             'Column Start 2 Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
 
-                        y_train = data_to_categorical(y_train, column_unique_values, number_of_unique_values)
+                        y_train = data_to_categorical(y_train, column_unique_values, number_of_unique_values, categorical_dict)
 
                         model.fit(x_train, y_train, epochs=10, batch_size=preset_batch_size, verbose=0)
 
-                        y_test = data_to_categorical(y_test, column_unique_values, number_of_unique_values)
+                        y_test = data_to_categorical(y_test, column_unique_values, number_of_unique_values, categorical_dict)
                         accuracy = model.evaluate(x_test, y_test, batch_size=preset_batch_size, verbose=0)
 
                         Logging.Logging.write_log_to_file_selectable("Loss: {}, Accuracy: {} ".format(accuracy[0], accuracy[1]))

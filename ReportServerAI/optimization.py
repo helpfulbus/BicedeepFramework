@@ -162,9 +162,13 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
     with tf.device('/cpu:0'):
         gc.enable()
         num_of_cols = len(desired_columns_as_label)
+        desired_columns_as_label = list(map((lambda x: x.strip("\n ,")), desired_columns_as_label))
         for index in range(0, num_of_cols):
             data_frame_copy = data_frame.copy(deep=True)
-            label_column_index = data_frame_copy.columns.get_loc(desired_columns_as_label[index])
+
+            dfc_columns = list(map((lambda x: x.strip("\n ,")), data_frame_copy.columns))
+
+            label_column_index = dfc_columns.index(desired_columns_as_label[index])
             label_column = data_frame_copy.iloc[:, label_column_index]
             # decide whether regression or classification will be applied to the column
             classification = False
@@ -178,6 +182,9 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
 
             if(label_column_name in string_columns or label_column_name in date_columns):
                 classification = True
+
+            if (classification):
+                categorical_dict = report.get_categorical_dict(column_unique_values)
 
             # drop label column from data frame
             data_frame_copy.drop(data_frame_copy.columns[[label_column_index]], axis=1, inplace=True)
@@ -200,8 +207,8 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
             x_train, x_test, y_train, y_test = model_selection.train_test_split(X, Y, test_size=0.2, random_state=42)
 
             if (classification):
-                y_train = report.data_to_categorical(y_train, column_unique_values, number_of_unique_values)
-                y_test = report.data_to_categorical(y_test, column_unique_values, number_of_unique_values)
+                y_train = report.data_to_categorical(y_train, column_unique_values, number_of_unique_values, categorical_dict)
+                y_test = report.data_to_categorical(y_test, column_unique_values, number_of_unique_values, categorical_dict)
 
             Logging.Logging.write_log_to_file_optimization("Optimization Start for : {}".format(label_column_name))
 
