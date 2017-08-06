@@ -63,41 +63,38 @@ def report_server_run(message):
     Logging.Logging.write_log_to_file("Optimization completed")
 
     # Google upload results
-    try:
-        GoogleStorage.upload_results(email)
-    except Exception as e:
-        Logging.Logging.write_log_to_file(str(e))
-        return
+    while True:
+        try:
+            GoogleStorage.upload_results(email)
+            break
+        except Exception as e:
+            Logging.Logging.write_log_to_file(str(e))
 
     # Delete local files
     try:
         GoogleStorage.delete_local_dir()
     except Exception as e:
         Logging.Logging.write_log_to_file(str(e))
-        return
 
     try:
         Aws.send_report_completed_message(message.body)
+        Logging.Logging.write_log_to_file("Report completed message sent to aws")
     except Exception as e:
         Logging.Logging.write_log_to_file(str(e))
-        return
-
-    Logging.Logging.write_log_to_file("Report completed message sent to aws")
 
     try:
         message.delete()
         Logging.Logging.write_log_to_file("Message Deleted")
     except Exception as e:
-        Logging.Logging.write_log_to_file(str(e))
-
-        try:
-            message_re_read = Aws.read_report_queue()
-            message_re_read.delete()
-            Logging.Logging.write_log_to_file("Message Deleted")
-        except Exception as e:
-            Logging.Logging.write_log_to_file(str(e))
-            return
-        return
+        delete_message_count = 10
+        while(delete_message_count > 0):
+            try:
+                message_re_read = Aws.read_report_queue()
+                message_re_read.delete()
+                Logging.Logging.write_log_to_file("Message Deleted")
+            except Exception as e:
+                delete_message_count = delete_message_count - 1
+                Logging.Logging.write_log_to_file(str(e))
 
 
 def main():

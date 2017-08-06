@@ -1,11 +1,8 @@
-Keras
 boto3
-numpy
-tensorflow
 pandas
-python_dateutil
-protobuf
-scikit_learn
+numpy
+Keras
+tensorflow
 h5py
 protobuf
 scikit_learn
