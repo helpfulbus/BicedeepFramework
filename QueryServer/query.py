@@ -48,22 +48,40 @@ def calculate_query(quey_file_path, model_file_path, model_details_path):
             details_data = json.load(data_file)
             category_dict = details_data['suggestions'][0]['categories']
 
-        best_index = predict[0].argmax()
-        for key, value in category_dict.items():
-            if(value == str(best_index)):
-                result = key
+        result_string = ""
+        predictArr = predict[0]
+        for i in range(0,2):
+
+            best_index = predictArr.argmax()
+            for key, value in category_dict.items():
+                if(value == str(best_index)):
+                    result = key
+                    result_percent = "{:.1%}".format(predictArr[best_index])
+                    predictArr[best_index] = 0
+                    break
+
+            if (data['result_type'] == "string"):
+                result = report.convertFromNumber(Decimal(result))
+            elif (data['result_type'] == "date"):
+                result = str(dt.datetime.fromordinal(int(result)))
+            else:
+                result = str(result)
+
+            result_string = result_string + result + "(" + result_percent + ")  "
+
+        data['results'] = result_string
 
     else:
         result = float(predict[0][0])
 
-    if (data['result_type'] == "string"):
-        result = report.convertFromNumber(Decimal(result))
-    elif (data['result_type'] == "date"):
-        result = str(dt.datetime.fromordinal(int(result)))
-    else:
-        result = str(result)
+        if (data['result_type'] == "string"):
+            result = report.convertFromNumber(Decimal(result))
+        elif (data['result_type'] == "date"):
+            result = str(dt.datetime.fromordinal(int(result)))
+        else:
+            result = str(result)
 
-    data['results'] = result
+        data['results'] = result
 
     Logging.Logging.write_log_to_file_queueserver(str(data))
     with open(quey_file_path, 'w') as output_file:
