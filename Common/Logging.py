@@ -19,7 +19,7 @@ class Logging:
     @staticmethod
     def write_log_to_file(input_string):
         input_string = str(input_string)
-        #print(input_string)
+        print(input_string)
         Logging.f.write(str(datetime.datetime.now()) + "  :  " + input_string + "\n")
         #Logging.f.flush()
 
@@ -30,7 +30,7 @@ class Logging:
     @staticmethod
     def write_log_to_file_selectable(input_string):
         input_string = str(input_string)
-        # print(input_string)
+        print(input_string)
         Logging.f2.write(str(datetime.datetime.now()) + "  :  " + input_string + "\n")
         # Logging.f.flush()
 
@@ -41,7 +41,7 @@ class Logging:
     @staticmethod
     def write_log_to_file_optimization(input_string):
         input_string = str(input_string)
-        # print(input_string)
+        print(input_string)
         Logging.f3.write(str(datetime.datetime.now()) + "  :  " + input_string + "\n")
         # Logging.f.flush()
 
@@ -52,7 +52,7 @@ class Logging:
     @staticmethod
     def write_log_to_file_queueserver(input_string):
         input_string = str(input_string)
-        # print(input_string)
+        print(input_string)
         Logging.f4.write(str(datetime.datetime.now()) + "  :  " + input_string + "\n")
         # Logging.f.flush()
 

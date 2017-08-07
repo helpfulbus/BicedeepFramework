@@ -92,6 +92,7 @@ def report_server_run(message):
                 message_re_read = Aws.read_report_queue()
                 message_re_read.delete()
                 Logging.Logging.write_log_to_file("Message Deleted")
+                return
             except Exception as e:
                 delete_message_count = delete_message_count - 1
                 Logging.Logging.write_log_to_file(str(e))
