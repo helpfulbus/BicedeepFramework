@@ -306,6 +306,7 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
             data_frame_copy = pd.concat([data_frame_copy, label_column_series], axis=1)
 
             best_minimumMSEValue = float('inf')  # value to keep min mse value
+            best_maxAccuracy = 0.0
             minMSEFeatureList = []  # value to keep list of feature where min mse occurs
 
             isFirstTime = True
@@ -321,6 +322,7 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
 
                 remove_feature_index = -1
                 local_minimumMSEValue = float('inf')
+                local_maxAccuracy = 0.0
 
                 if (isFirstTime):
                     loop_start = -1
@@ -377,14 +379,15 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                         if(np.isnan(accuracy[0])):
                             accuracy[0] = float('inf')
 
-                        if accuracy[0] <= local_minimumMSEValue:
+                        if accuracy[1] > local_maxAccuracy or (accuracy[1] == local_maxAccuracy and accuracy[0] <= local_minimumMSEValue):
                             local_minimumMSEValue = accuracy[0]
+                            local_maxAccuracy = accuracy[1]
                             remove_feature_index = j
                             Logging.Logging.write_log_to_file_selectable('local')
-                            if local_minimumMSEValue <= best_minimumMSEValue:
+                            if local_maxAccuracy > best_maxAccuracy or (local_maxAccuracy == best_maxAccuracy and local_minimumMSEValue <= best_minimumMSEValue):
                                 Logging.Logging.write_log_to_file_selectable('best')
                                 best_minimumMSEValue = local_minimumMSEValue
-                                best_acc = accuracy[1]
+                                best_maxAccuracy = accuracy[1]
                                 minMSEFeatureList = feature_set_column_names
                                 save_model = model
 
@@ -440,7 +443,7 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                 label_types[label_column_name] = "date"
 
             if classification:
-                label_mse_score[label_column_name] = (best_minimumMSEValue, classification, best_acc)
+                label_mse_score[label_column_name] = (best_minimumMSEValue, classification, best_maxAccuracy)
                 label_category_dict[label_column_name] = categorical_dict
             else:
                 label_mse_score[label_column_name] = (best_minimumMSEValue, classification)

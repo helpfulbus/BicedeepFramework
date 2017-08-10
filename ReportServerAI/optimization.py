@@ -248,19 +248,34 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
 
                     if len(T) == 0:
                         continue
-                    models = [models[j] for j in (argsort(val_losses, axis=0)[:,0])[0:int(n_i / eta)]]
+                    models = [models[j] for j in (argsort(val_losses, axis=0)[:,0])]
                     val_losses = sorted(val_losses, key=lambda x: x[0])
                     end = time.time()
                     for k in range(0, int(n_i / eta)):
                         Logging.Logging.write_log_to_file_optimization("Parameters: {}, Loss: {}".format(T[k], val_losses[k]))
-                    if (len(val_losses) > 0 and len(models) > 0 and val_losses[0][0] < label_mse_score[label_column_name][0]):
+
+                    if(classification):
+                        best_accuracy = label_mse_score[label_column_name][2]
+                        found_better = False
+                        for i in range(0, len(val_losses)):
+                            found_better_local = val_losses[i][1] > best_accuracy
+                            if val_losses[i][1] == best_accuracy:
+                                found_better_local = val_losses[i][0] < label_mse_score[label_column_name][0]
+                            if(found_better_local):
+                                best_accuracy = val_losses[i][1]
+                                used_model_id = i
+                                found_better = True
+                    else:
+                        found_better = val_losses[0][0] < label_mse_score[label_column_name][0]
+                        used_model_id = 0
+                    if (len(val_losses) > 0 and len(models) > 0 and found_better):
                         Logging.Logging.write_log_to_file_optimization('Found better')
-                        save_model = models[0]
+                        save_model = models[used_model_id]
                         save_model.save(model_save_file_name)
                         if classification:
-                            label_mse_score[label_column_name] = (val_losses[0][0], classification, val_losses[0][1])
+                            label_mse_score[label_column_name] = (val_losses[used_model_id][0], classification, val_losses[used_model_id][1])
                         else:
-                            label_mse_score[label_column_name] = (val_losses[0][0], classification)
+                            label_mse_score[label_column_name] = (val_losses[used_model_id][0], classification)
 
                     Logging.Logging.write_log_to_file_optimization("Time elapsed: {} seconds".format(end - start))
                     Logging.Logging.write_log_to_file_optimization("*****")
