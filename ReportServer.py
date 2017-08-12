@@ -23,7 +23,6 @@ def optimization(file_path, file_name, reports_path, outputs_path):
     os.setpriority(posix.PRIO_PROCESS, os.getpid(), -20)
     optimization.do_optimization(file_path, file_name, reports_path, outputs_path)
 
-
 def report_server_run(message):
     Logging.Logging.write_log_to_file("Read message from aws queue")
 
@@ -31,14 +30,14 @@ def report_server_run(message):
         [email, file_name, selected_headers] = Aws.deserialize_message(message)
     except Exception as e:
         Logging.Logging.write_log_to_file(str(e))
-        return
+        return False
 
     file_path = ""
     try:
         [file_path, reports_path, outputs_path] = GoogleStorage.download_file(file_name, email)
     except Exception as e:
         Logging.Logging.write_log_to_file(str(e))
-        return
+        return False
 
     Logging.Logging.write_log_to_file("Data file downloaded : " + file_name)
 
@@ -49,7 +48,7 @@ def report_server_run(message):
         p.join()
     except Exception as e:
         Logging.Logging.write_log_to_file(str(e))
-        return
+        return False
 
     Logging.Logging.write_log_to_file("Feature selection completed")
 
@@ -59,6 +58,7 @@ def report_server_run(message):
         p2.join()
     except Exception as e:
         Logging.Logging.write_log_to_file(str(e))
+        return False
 
     Logging.Logging.write_log_to_file("Optimization completed")
 
@@ -82,21 +82,8 @@ def report_server_run(message):
     except Exception as e:
         Logging.Logging.write_log_to_file(str(e))
 
-    try:
-        message.delete()
-        Logging.Logging.write_log_to_file("Message Deleted")
-    except Exception as e:
-        delete_message_count = 10
-        while(delete_message_count > 0):
-            try:
-                message_re_read = Aws.read_report_queue()
-                message_re_read.delete()
-                Logging.Logging.write_log_to_file("Message Deleted")
-                return
-            except Exception as e:
-                delete_message_count = delete_message_count - 1
-                Logging.Logging.write_log_to_file(str(e))
-
+    Aws.try_to_delete_message(message, config.REPORT_QUEUE_NAME)
+    return True
 
 def main():
     Logging.Logging.init()
@@ -104,13 +91,15 @@ def main():
     while True:
         Logging.Logging.write_log_to_file_flush()
         try:
-            message = Aws.read_report_queue()
+            message = Aws.read_queue(config.REPORT_QUEUE_NAME)
         except Exception as e:
             Logging.Logging.write_log_to_file(str(e))
             continue
 
         if message is not None:
-            report_server_run(message)
+            result = report_server_run(message)
+            if(result == False):
+                Aws.add_message_to_exception_queue(message, config.REPORT_QUEUE_NAME, config.REPORT_EXCEPTION_QUEUE_NAME)
         else:
             if Timing.Timing.DoShutDown():
                 Logging.Logging.write_log_to_file("Shutting down the instance")
@@ -119,8 +108,6 @@ def main():
                     Logging.Logging.write_log_to_file_flush()
                 except Exception as e:
                     Logging.Logging.write_log_to_file(str(e))
-
-
 
 
 

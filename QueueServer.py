@@ -22,14 +22,14 @@ def queue_server_run(message):
         [query_file_name, model_file_name] = Aws.deserialize_queue_message(message)
     except Exception as e:
         Logging.Logging.write_log_to_file_queueserver(str(e))
-        return
+        return False
 
     file_path = ""
     try:
         [quey_file_path, model_file_path, model_details_path] = GoogleStorage.download_query_file(query_file_name, model_file_name)
     except Exception as e:
         Logging.Logging.write_log_to_file_queueserver(str(e))
-        return
+        return False
 
     Logging.Logging.write_log_to_file_queueserver("Query file downloaded : " + query_file_name)
     Logging.Logging.write_log_to_file_queueserver("Model file downloaded : " + model_file_name)
@@ -42,7 +42,7 @@ def queue_server_run(message):
         p.join()
     except Exception as e:
         Logging.Logging.write_log_to_file_queueserver(str(e))
-        return
+        return False
 
     Logging.Logging.write_log_to_file_queueserver("Query calculation completed")
 
@@ -51,14 +51,12 @@ def queue_server_run(message):
         GoogleStorage.upload_query_results(query_file_name)
     except Exception as e:
         Logging.Logging.write_log_to_file_queueserver(str(e))
-        return
 
     # Delete local files
     try:
         GoogleStorage.delete_local_dir()
     except Exception as e:
         Logging.Logging.write_log_to_file_queueserver(str(e))
-        return
 
     try:
         message.delete()
@@ -66,13 +64,15 @@ def queue_server_run(message):
     except Exception as e:
         Logging.Logging.write_log_to_file_queueserver(str(e))
         try:
-            message_re_read = Aws.read_queue_queue()
-            message_re_read.delete()
-            Logging.Logging.write_log_to_file_queueserver("Query Message Deleted")
+            message_re_read = Aws.read_queue(config.QUEUE_QUEUE_NAME)
+            if(message.body == message_re_read.body):
+                message_re_read.delete()
+                Logging.Logging.write_log_to_file_queueserver("Query Message Deleted")
         except Exception as e:
             Logging.Logging.write_log_to_file_queueserver(str(e))
-            return
-        return
+            return True
+        return True
+    return True
 
 
 def main():
@@ -81,13 +81,15 @@ def main():
     while True:
         Logging.Logging.write_log_to_file_queueserver_flush()
         try:
-            message = Aws.read_queue_queue()
+            message = Aws.read_queue(config.QUEUE_QUEUE_NAME)
         except Exception as e:
             Logging.Logging.write_log_to_file_queueserver(str(e))
             continue
 
         if message is not None:
-            queue_server_run(message)
+            result = queue_server_run(message)
+            if(result == False):
+                Aws.add_message_to_exception_queue(message, config.QUEUE_QUEUE_NAME, config.QUERY_EXCEPTION_QUEUE_NAME)
         else:
             if Timing.Timing.DoShutDown():
                 Logging.Logging.write_log_to_file_queueserver("Shutting down the instance")

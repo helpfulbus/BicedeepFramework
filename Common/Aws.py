@@ -2,6 +2,7 @@ import boto3
 import config
 import json
 from collections import namedtuple
+from Common import Logging
 
 
 def send_report_completed_message(message_body):
@@ -21,10 +22,44 @@ def send_report_completed_message(message_body):
 
     return response
 
+def try_to_delete_message(message, queueName):
+    try:
+        message.delete()
+        Logging.Logging.write_log_to_file("Message Deleted")
+    except Exception as e:
+        delete_message_count = 10
+        while(delete_message_count > 0):
+            try:
+                message_re_read = read_queue(queueName)
+                if(message.body == message_re_read.body):
+                    message_re_read.delete()
+                    Logging.Logging.write_log_to_file("Message Deleted")
+                return
+            except Exception as e:
+                delete_message_count = delete_message_count - 1
+                Logging.Logging.write_log_to_file(str(e))
 
-def read_report_queue():
+
+def send_exception_message(message_body, queueName):
     sqs = get_boto3_resource('sqs')
-    queue = sqs.get_queue_by_name(QueueName=config.REPORT_QUEUE_NAME)
+    # Get the queue
+    queue = sqs.get_queue_by_name(QueueName=queueName)
+
+    response = queue.send_messages(
+        Entries=[
+            {
+                'Id': '1',
+                'MessageBody': message_body,
+                'MessageGroupId': 'ReportException'
+            },
+        ]
+    )
+
+    return response
+
+def read_queue(queueName):
+    sqs = get_boto3_resource('sqs')
+    queue = sqs.get_queue_by_name(QueueName=queueName)
 
     message_list = queue.receive_messages(MessageAttributeNames=['MessageGroupId'],
                                           MaxNumberOfMessages=1,
@@ -35,17 +70,12 @@ def read_report_queue():
         return None
 
 
-def read_queue_queue():
-    sqs = get_boto3_resource('sqs')
-    queue = sqs.get_queue_by_name(QueueName=config.QUEUE_QUEUE_NAME)
-
-    message_list = queue.receive_messages(MessageAttributeNames=['MessageGroupId'],
-                                          MaxNumberOfMessages=1,
-                                          WaitTimeSeconds=1)
-    if len(message_list) > 0:
-        return message_list[0]
-    else:
-        return None
+def add_message_to_exception_queue(message, sourceQueueName, exceptionQueueName):
+    try:
+        send_exception_message(message.body, exceptionQueueName)
+    except Exception as e:
+        Logging.Logging.write_log_to_file(str(e))
+    try_to_delete_message(message, sourceQueueName)
 
 
 def deserialize_message(message):
