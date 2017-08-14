@@ -39,8 +39,9 @@ def readData(filePath):
     data_frame = pd.read_csv(filePath)
     return data_frame
 
-
 def is_date(string):
+    if (pd.isnull(string)):
+        return True
     try:
         parse(string)
         return True
@@ -48,6 +49,8 @@ def is_date(string):
         return False
 
 def is_number(input):
+    if (pd.isnull(input)):
+        return True
     try:
         int(input.replace(',', ''))
         return True
@@ -148,6 +151,8 @@ def create_details_file(output_path, file_name, label_suggestion, label_types, l
         file_counter += 1
 
 def is_string(inp):
+    if (pd.isnull(inp)):
+        return True
     return isinstance(inp, str)
 
 # Convert number to datetime, and string:
@@ -170,10 +175,12 @@ def preprocess_data(df):
             is_date_column = df[col_name].apply(lambda x: is_date(x)).all()
             # Check if string value is a date
             if (is_date_column):
+                df[col_name] = df[col_name].fillna("01-01-2000")
                 df[col_name] = pd.to_datetime(df[col_name])
                 df[col_name] = df[col_name].map(dt.datetime.toordinal)
                 date_columns.append(col_name)
             else:
+                df[col_name] = df[col_name].fillna("nan")
                 df[col_name] = df[col_name].map(convertToNumber)
                 string_columns.append(col_name)
         elif is_number_column:
@@ -181,6 +188,7 @@ def preprocess_data(df):
             if df[col_name].mean() > 100000:
                 big_number_columns.append(col_name)
         else:
+            df[col_name] = df[col_name].fillna(0)
             if df[col_name].mean() > 100000:
                 big_number_columns.append(col_name)
 
@@ -281,7 +289,7 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
             number_of_unique_values = len(column_unique_values)
             number_of_samples = len(label_column.values)
 
-            if ((number_of_unique_values / number_of_samples) < 0.2):
+            if ((number_of_unique_values / number_of_samples) < 0.01):
                 classification = True
             label_column_name = data_frame_copy.columns[label_column_index]
 
