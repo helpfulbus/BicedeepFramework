@@ -176,7 +176,7 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
             number_of_unique_values = len(label_column.unique())
             number_of_samples = len(label_column.values)
 
-            if ((number_of_unique_values / number_of_samples) < 0.2):
+            if ((number_of_unique_values / number_of_samples) < 0.01):
                 classification = True
             label_column_name = data_frame_copy.columns[label_column_index]
 
