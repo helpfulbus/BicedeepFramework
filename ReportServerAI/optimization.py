@@ -1,5 +1,6 @@
 import json
 import pandas as pd
+import numpy as np
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.layers.normalization import BatchNormalization
@@ -238,8 +239,12 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
                         Logging.Logging.write_log_to_file_optimization(t)
                         Logging.Logging.write_log_to_file_optimization(loss)
                         if (classification):
+                            if (np.isnan(loss[0])):
+                                loss[0] = float('inf')
                             val_losses.append((loss[0], loss[1]))
                         else:
+                            if (np.isnan(loss)):
+                                loss = float('inf')
                             val_losses.append((loss, 0))
 
                         models.append(mod)

@@ -101,7 +101,7 @@ def main():
             if(result == False):
                 Aws.add_message_to_exception_queue(message, config.REPORT_QUEUE_NAME, config.REPORT_EXCEPTION_QUEUE_NAME)
         else:
-            if Timing.Timing.DoShutDown():
+            if Timing.Timing.DoShutDown(Logging.Logging.write_log_to_file):
                 Logging.Logging.write_log_to_file("Shutting down the instance")
                 try:
                     Aws.stop_instance(config.REPORT_INSTANCE_ID)

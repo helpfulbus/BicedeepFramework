@@ -9,7 +9,7 @@ class Timing:
         pass
 
     @staticmethod
-    def DoShutDown():
+    def DoShutDown(logMethod):
         try:
             threshold = WAIT_UNTIL_MIN
             last_reboot_cmd = "last -F | grep reboot"
@@ -28,5 +28,6 @@ class Timing:
             else:
                 return False
         except Exception as e:
+            logMethod(str(e))
             return False
 
