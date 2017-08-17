@@ -1,3 +1,7 @@
+# <copyright company="Bicedeep, Inc.">
+# Copyright (c) 2016-2018 All Rights Reserved
+# </copyright>
+
 import json
 import pandas as pd
 import numpy as np
