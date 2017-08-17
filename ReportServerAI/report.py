@@ -379,6 +379,8 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                         y_test = data_to_categorical(y_test, column_unique_values, number_of_unique_values, categorical_dict)
                         accuracy = model.evaluate(x_test, y_test, batch_size=preset_batch_size, verbose=0)
 
+                        Logging.Logging.write_log_to_file_selectable(best_maxAccuracy)
+
                         Logging.Logging.write_log_to_file_selectable("Loss: {}, Accuracy: {} ".format(accuracy[0], accuracy[1]))
                         Logging.Logging.write_log_to_file_selectable(feature_set_column_names)
                         Logging.Logging.write_log_to_file_selectable('Column Start 3 Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
@@ -416,6 +418,8 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                         model.fit(x_train, y_train, epochs=15, batch_size=preset_batch_size, verbose=0)
 
                         loss_and_metrics = model.evaluate(x_test, y_test, batch_size=preset_batch_size, verbose=0)
+
+                        Logging.Logging.write_log_to_file_selectable(best_minimumMSEValue)
 
                         Logging.Logging.write_log_to_file_selectable(loss_and_metrics)
                         Logging.Logging.write_log_to_file_selectable(feature_set_column_names)
