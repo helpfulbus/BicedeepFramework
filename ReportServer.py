@@ -5,6 +5,7 @@
 from multiprocessing import Process
 import os
 import posix
+import time
 from Common import Timing
 from Common import GoogleStorage
 from Common import Aws
@@ -92,8 +93,17 @@ def report_server_run(message):
 def main():
     Logging.Logging.init()
     Logging.Logging.write_log_to_file("Report Server Started")
+    Logging.Logging.remoteLog("Report_Server_Alive", "ID : " + config.REPORT_INSTANCE_ID)
+    start_time = time.time()
     while True:
+
+        end_time = time.time()
+        if end_time - start_time > 3600:
+            Logging.Logging.remoteLog("Report Server Alive", "ID : " + config.REPORT_INSTANCE_ID)
+            start_time = time.time()
+
         Logging.Logging.write_log_to_file_flush()
+
         try:
             message = Aws.read_queue(config.REPORT_QUEUE_NAME)
         except Exception as e:

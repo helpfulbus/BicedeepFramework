@@ -293,7 +293,7 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
             number_of_unique_values = len(column_unique_values)
             number_of_samples = len(label_column.values)
 
-            if ((number_of_unique_values / number_of_samples) < 0.01):
+            if ((number_of_unique_values / number_of_samples) < 0.01 and number_of_unique_values < 64):
                 classification = True
             label_column_name = data_frame_copy.columns[label_column_index]
 

@@ -32,6 +32,6 @@ class Timing:
             else:
                 return False
         except Exception as e:
-            #logMethod(str(e))
+            logMethod(str(e))
             return False
 
