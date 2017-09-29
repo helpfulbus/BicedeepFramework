@@ -99,7 +99,7 @@ def main():
 
         end_time = time.time()
         if end_time - start_time > 3600:
-            Logging.Logging.remoteLog("Report Server Alive", "ID : " + config.REPORT_INSTANCE_ID)
+            Logging.Logging.remoteLog("Report_Server_Alive", "ID : " + config.REPORT_INSTANCE_ID)
             start_time = time.time()
 
         Logging.Logging.write_log_to_file_flush()

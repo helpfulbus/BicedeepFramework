@@ -4,6 +4,7 @@
 
 import datetime
 import subprocess
+from Common import Logging
 from dateutil.parser import parse
 
 WAIT_UNTIL_MIN = 45
