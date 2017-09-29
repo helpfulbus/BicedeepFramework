@@ -6,6 +6,7 @@ from multiprocessing import Process
 import os
 import posix
 import config
+import time
 from Common import Timing
 from Common import GoogleStorage
 from Common import Aws
@@ -82,7 +83,23 @@ def queue_server_run(message):
 def main():
     Logging.Logging.init()
     Logging.Logging.write_log_to_file_queueserver("Queue Server Started")
+
+    try:
+        Logging.Logging.remoteLog("Query_Server_Alive", "Query_Server_Alive ID : " + config.QUEUE_INSTANCE_ID)
+    except Exception as e:
+        Logging.Logging.write_log_to_file_queueserver(str(e))
+
+    start_time = time.time()
     while True:
+        end_time = time.time()
+        if end_time - start_time > 3600:
+            try:
+                Logging.Logging.remoteLog("Query_Server_Alive", "Query_Server_Alive ID : " + config.QUEUE_INSTANCE_ID)
+            except Exception as e:
+                Logging.Logging.write_log_to_file_queueserver(str(e))
+            start_time = time.time()
+
+
         Logging.Logging.write_log_to_file_queueserver_flush()
         try:
             message = Aws.read_queue(config.QUEUE_QUEUE_NAME)
@@ -95,7 +112,7 @@ def main():
             if(result == False):
                 Aws.add_message_to_exception_queue(message, config.QUEUE_QUEUE_NAME, config.QUERY_EXCEPTION_QUEUE_NAME)
         else:
-            if Timing.Timing.DoShutDown(Logging.Logging.write_log_to_file_queueserver):
+            if Timing.Timing.DoShutDown(Logging.Logging.write_log_to_file_queueserver, config.QUEUE_INSTANCE_ID):
                 Logging.Logging.write_log_to_file_queueserver("Shutting down the instance")
                 try:
                     Aws.stop_instance(config.QUEUE_INSTANCE_ID)

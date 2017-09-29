@@ -93,13 +93,20 @@ def report_server_run(message):
 def main():
     Logging.Logging.init()
     Logging.Logging.write_log_to_file("Report Server Started")
-    Logging.Logging.remoteLog("Report_Server_Alive", "ID : " + config.REPORT_INSTANCE_ID)
+    try:
+        Logging.Logging.remoteLog("Report_Server_Alive", "Report_Server_Alive ID : " + config.REPORT_INSTANCE_ID)
+    except Exception as e:
+        Logging.Logging.write_log_to_file(str(e))
+
     start_time = time.time()
     while True:
 
         end_time = time.time()
         if end_time - start_time > 3600:
-            Logging.Logging.remoteLog("Report_Server_Alive", "ID : " + config.REPORT_INSTANCE_ID)
+            try:
+                Logging.Logging.remoteLog("Report_Server_Alive", "Report_Server_Alive ID : " + config.REPORT_INSTANCE_ID)
+            except Exception as e:
+                Logging.Logging.write_log_to_file(str(e))
             start_time = time.time()
 
         Logging.Logging.write_log_to_file_flush()
@@ -115,7 +122,7 @@ def main():
             if(result == False):
                 Aws.add_message_to_exception_queue(message, config.REPORT_QUEUE_NAME, config.REPORT_EXCEPTION_QUEUE_NAME)
         else:
-            if Timing.Timing.DoShutDown(Logging.Logging.write_log_to_file):
+            if Timing.Timing.DoShutDown(Logging.Logging.write_log_to_file, config.REPORT_INSTANCE_ID):
                 Logging.Logging.write_log_to_file("Shutting down the instance")
                 try:
                     Aws.stop_instance(config.REPORT_INSTANCE_ID)
