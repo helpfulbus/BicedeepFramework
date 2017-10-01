@@ -40,7 +40,10 @@ class LastUpdatedOrderedDict(OrderedDict):
 
 # Read given file from filepath and return
 def readData(filePath):
-    data_frame = pd.read_csv(filePath)
+    try:
+        data_frame = pd.read_csv(filePath)
+    except:
+        data_frame = pd.read_csv(filePath, encoding="latin_1")
     return data_frame
 
 def is_date(string):

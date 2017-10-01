@@ -11,7 +11,6 @@ from Common import GoogleStorage
 from Common import Aws
 from Common import Logging
 
-
 import config
 
 
@@ -27,6 +26,7 @@ def optimization(file_path, file_name, reports_path, outputs_path):
     os.nice(-20)
     os.setpriority(posix.PRIO_PROCESS, os.getpid(), -20)
     optimization.do_optimization(file_path, file_name, reports_path, outputs_path)
+
 
 def report_server_run(message):
     Logging.Logging.write_log_to_file("Read message from aws queue")
@@ -48,11 +48,16 @@ def report_server_run(message):
 
     # Calculations
     try:
-        p = Process(target=selectable_feature, args=(file_path, file_name.split("/")[-1], selected_headers, reports_path, outputs_path,))
+        p = Process(target=selectable_feature,
+                    args=(file_path, file_name.split("/")[-1], selected_headers, reports_path, outputs_path,))
         p.start()
         p.join()
     except Exception as e:
         Logging.Logging.write_log_to_file(str(e))
+        return False
+
+    if p.exitcode == 1:
+        Logging.Logging.write_log_to_file(str("selectable_feature Exit1"))
         return False
 
     Logging.Logging.write_log_to_file("Feature selection completed")
@@ -63,6 +68,10 @@ def report_server_run(message):
         p2.join()
     except Exception as e:
         Logging.Logging.write_log_to_file(str(e))
+        return False
+
+    if p2.exitcode == 1:
+        Logging.Logging.write_log_to_file(str("optimization Exit1"))
         return False
 
     Logging.Logging.write_log_to_file("Optimization completed")
@@ -90,6 +99,7 @@ def report_server_run(message):
     Aws.try_to_delete_message(message, config.REPORT_QUEUE_NAME)
     return True
 
+
 def main():
     Logging.Logging.init()
     Logging.Logging.write_log_to_file("Report Server Started")
@@ -104,7 +114,8 @@ def main():
         end_time = time.time()
         if end_time - start_time > 3600:
             try:
-                Logging.Logging.remoteLog("Report_Server_Alive", "Report_Server_Alive ID : " + config.REPORT_INSTANCE_ID)
+                Logging.Logging.remoteLog("Report_Server_Alive",
+                                          "Report_Server_Alive ID : " + config.REPORT_INSTANCE_ID)
             except Exception as e:
                 Logging.Logging.write_log_to_file(str(e))
             start_time = time.time()
@@ -119,8 +130,9 @@ def main():
 
         if message is not None:
             result = report_server_run(message)
-            if(result == False):
-                Aws.add_message_to_exception_queue(message, config.REPORT_QUEUE_NAME, config.REPORT_EXCEPTION_QUEUE_NAME)
+            if (result == False):
+                Aws.add_message_to_exception_queue(message, config.REPORT_QUEUE_NAME,
+                                                   config.REPORT_EXCEPTION_QUEUE_NAME)
         else:
             if Timing.Timing.DoShutDown(Logging.Logging.write_log_to_file, config.REPORT_INSTANCE_ID):
                 Logging.Logging.write_log_to_file("Shutting down the instance")
@@ -129,7 +141,6 @@ def main():
                     Logging.Logging.write_log_to_file_flush()
                 except Exception as e:
                     Logging.Logging.write_log_to_file(str(e))
-
 
 
 if __name__ == "__main__":
