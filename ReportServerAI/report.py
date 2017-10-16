@@ -300,8 +300,8 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                 classification = True
             label_column_name = data_frame_copy.columns[label_column_index]
 
-            if(label_column_name in string_columns or label_column_name in date_columns):
-                classification = True
+            #if(label_column_name in string_columns or label_column_name in date_columns):
+            #    classification = True
 
             if(classification):
                 categorical_dict = get_categorical_dict(column_unique_values)

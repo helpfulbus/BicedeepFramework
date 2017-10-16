@@ -4,6 +4,7 @@
 
 import datetime
 import os
+import config
 from google.cloud import logging
 
 class Logging:
@@ -11,7 +12,6 @@ class Logging:
     f2 = open('selectablefeature.log', 'a')
     f3 = open('optimization.log', 'a')
     f4 = open('queueserver.log', 'a')
-    logging_client = logging.Client()
 
     @staticmethod
     def init():
@@ -72,5 +72,6 @@ class Logging:
 
     @staticmethod
     def remoteLog(log_name, input_string):
-        logger = Logging.logging_client.logger(log_name)
+        logging_client = logging.Client(project=config.PROJECT_NAME)
+        logger = logging_client.logger(log_name)
         logger.log_text(input_string)
