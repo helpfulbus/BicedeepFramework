@@ -8,6 +8,7 @@ import numpy as np
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.layers.normalization import BatchNormalization
+from keras.callbacks import EarlyStopping
 from sklearn import model_selection
 import time
 import gc
@@ -100,14 +101,14 @@ def run_then_return_val_loss(num_iters, hyperparameters, input_dim, is_classific
             model.add(Dense(output_dimension, activation='softmax'))
             model.compile(loss='categorical_crossentropy', optimizer=hyperparameters[1], metrics=['accuracy'])
 
-            model.fit(x_train, y_train, epochs=10, batch_size=hyperparameters[4], verbose=0)
+            model.fit(x_train, y_train, epochs=6, batch_size=hyperparameters[4], verbose=0)
             loss_and_metrics = model.evaluate(x_test, y_test, batch_size=hyperparameters[4], verbose=0)
             return loss_and_metrics, model
         else:
             model.add(Dense(1, kernel_initializer='normal'))
             model.compile(loss='mean_absolute_error', optimizer=hyperparameters[1])
 
-            model.fit(x_train, y_train, epochs=15, batch_size=hyperparameters[4], verbose=0)
+            model.fit(x_train, y_train, epochs=6, batch_size=hyperparameters[4], verbose=0)
             loss_and_metrics = model.evaluate(x_test, y_test, batch_size=hyperparameters[4], verbose=0)
             return loss_and_metrics, model
 
@@ -236,6 +237,7 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
                     r_i = r * eta ** (i)
                     val_losses = []
                     models = []
+                    hypers = []
 
                     for t in T:
                         loss, mod = run_then_return_val_loss(int(r_i), t, number_of_features, classification,
@@ -252,11 +254,14 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
                             val_losses.append((loss, 0))
 
                         models.append(mod)
+                        hypers.append(t)
 
                     T = [T[m] for m in (argsort(val_losses, axis=0)[:,0])[0:int(n_i / eta)]]
 
                     if len(T) == 0:
                         continue
+
+                    hypers = [hypers[j] for j in (argsort(val_losses, axis=0)[:,0])]
                     models = [models[j] for j in (argsort(val_losses, axis=0)[:,0])]
                     val_losses = sorted(val_losses, key=lambda x: x[0])
                     end = time.time()
@@ -279,13 +284,23 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
                         used_model_id = 0
                     if (len(val_losses) > 0 and len(models) > 0 and found_better):
                         Logging.Logging.write_log_to_file_optimization('Found better')
-                        save_model = models[used_model_id]
-                        save_model.save(model_save_file_name)
-                        if classification:
-                            label_mse_score[label_column_name] = (val_losses[used_model_id][0], classification, val_losses[used_model_id][1])
-                        else:
-                            label_mse_score[label_column_name] = (val_losses[used_model_id][0], classification)
 
+                        save_model = models[used_model_id]
+
+                        if classification:
+                            checkpointer = EarlyStopping(monitor='acc', min_delta=0, patience=1, verbose=1,mode='auto')
+                        else:
+                            checkpointer = EarlyStopping(monitor='loss', min_delta=0, patience=1, verbose=1,mode='auto')
+
+                        save_model.fit(x_train, y_train, epochs=30, batch_size=hypers[used_model_id][4], verbose=1, callbacks=[checkpointer])
+                        save_val_losses = save_model.evaluate(x_test, y_test, batch_size=hypers[used_model_id][4],
+                                                              verbose=0)
+                        if classification:
+                            label_mse_score[label_column_name] = (save_val_losses[0], classification, save_val_losses[1])
+                        else:
+                            label_mse_score[label_column_name] = (save_val_losses, classification)
+
+                        save_model.save(model_save_file_name)
                     Logging.Logging.write_log_to_file_optimization("Time elapsed: {} seconds".format(end - start))
                     Logging.Logging.write_log_to_file_optimization("*****")
                 Logging.Logging.write_log_to_file_optimization("End of iteration: {}".format(i))
