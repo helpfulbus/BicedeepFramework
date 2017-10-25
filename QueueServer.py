@@ -13,25 +13,27 @@ from Common import Aws
 from Common import Logging
 
 
-def query_calculate(quey_file_path, model_file_path, model_details_path):
+def query_calculate(query_file_path, model_file_path, model_details_path, selected_headers):
     from QueryServer import query
     os.nice(-20)
     os.setpriority(posix.PRIO_PROCESS, os.getpid(), -20)
-    query.calculate_query(quey_file_path, model_file_path, model_details_path)
+    query.calculate_query(query_file_path, model_file_path, model_details_path, selected_headers)
 
 
 def queue_server_run(message):
     Logging.Logging.write_log_to_file_queueserver("Read message from aws queue")
 
     try:
-        [query_file_name, model_file_name] = Aws.deserialize_queue_message(message)
+        [query_file_name, model_file_name, selected_headers] = Aws.deserialize_queue_message(message)
     except Exception as e:
         Logging.Logging.write_log_to_file_queueserver(str(e))
         return False
 
+    Logging.Logging.write_log_to_file_queueserver("aws queue deserialize")
+
     file_path = ""
     try:
-        [quey_file_path, model_file_path, model_details_path] = GoogleStorage.download_query_file(query_file_name, model_file_name)
+        [query_file_path, model_file_path, model_details_path] = GoogleStorage.download_query_file(query_file_name, model_file_name)
     except Exception as e:
         Logging.Logging.write_log_to_file_queueserver(str(e))
         return False
@@ -42,7 +44,7 @@ def queue_server_run(message):
 
     # Calculations
     try:
-        p = Process(target=query_calculate, args=(quey_file_path, model_file_path, model_details_path,))
+        p = Process(target=query_calculate, args=(query_file_path, model_file_path, model_details_path, selected_headers,))
         p.start()
         p.join()
     except Exception as e:

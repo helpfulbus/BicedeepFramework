@@ -88,7 +88,7 @@ def deserialize_message(message):
 
 def deserialize_queue_message(message):
     deserialized_message = json.loads(message.body, object_hook=lambda d: namedtuple('X', d.keys())(*d.values()))
-    return deserialized_message.fileName, deserialized_message.content
+    return deserialized_message.fileName, deserialized_message.content, deserialized_message.selectedHeaders
 
 
 def stop_instance(instance_id):
