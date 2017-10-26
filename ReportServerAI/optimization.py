@@ -145,6 +145,7 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
 
     label_mse_score = {}
     label_types = {}
+    label_mse_score_best_epochs = {}
     for i in range(0, len(data['part_predictability'])):
         score = data['part_predictability'][i]['predictability']
         classification = data['part_predictability'][i]['classification']
@@ -155,6 +156,16 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
         else:
             label_mse_score[data['part_predictability'][i]['part_name']] = (score, classification)
         label_types[data['part_predictability'][i]['part_name']] = data['part_predictability'][i]['type']
+
+    for i in range(0, len(data['part_predictability_best_epochs'])):
+        score = data['part_predictability_best_epochs'][i]['predictability']
+        classification = data['part_predictability_best_epochs'][i]['classification']
+
+        if (classification):
+            accuracy = data['part_predictability_best_epochs'][i]['accuracy']
+            label_mse_score_best_epochs[data['part_predictability_best_epochs'][i]['part_name']] = (score, classification, accuracy)
+        else:
+            label_mse_score_best_epochs[data['part_predictability_best_epochs'][i]['part_name']] = (score, classification)
 
     desired_columns_as_label = []
     label_suggestion = {}
@@ -293,12 +304,14 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
                             checkpointer = EarlyStopping(monitor='loss', min_delta=0, patience=1, verbose=1,mode='auto')
 
                         save_model.fit(x_train, y_train, epochs=30, batch_size=hypers[used_model_id][4], verbose=1, callbacks=[checkpointer])
-                        save_val_losses = save_model.evaluate(x_test, y_test, batch_size=hypers[used_model_id][4],
-                                                              verbose=0)
+                        save_val_losses = save_model.evaluate(x_test, y_test, batch_size=hypers[used_model_id][4],verbose=0)
+
                         if classification:
-                            label_mse_score[label_column_name] = (save_val_losses[0], classification, save_val_losses[1])
+                            if label_mse_score_best_epochs[label_column_name][2] < save_val_losses[1] or (label_mse_score_best_epochs[label_column_name][2] == save_val_losses[1] and label_mse_score_best_epochs[label_column_name][0] > save_val_losses[0]):
+                                label_mse_score_best_epochs[label_column_name] = (save_val_losses[0], classification, save_val_losses[1])
                         else:
-                            label_mse_score[label_column_name] = (save_val_losses, classification)
+                            if label_mse_score_best_epochs[label_column_name][0] > save_val_losses[0]:
+                                label_mse_score_best_epochs[label_column_name] = (save_val_losses, classification)
 
                         save_model.save(model_save_file_name)
                     Logging.Logging.write_log_to_file_optimization("Time elapsed: {} seconds".format(end - start))
@@ -313,8 +326,8 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
     label_suggestion_ordered = report.LastUpdatedOrderedDict()
 
     for key, value in id_name_dict.items():
-        label_mse_score_ordered[value] = label_mse_score[value]
+        label_mse_score_ordered[value] = label_mse_score_best_epochs[value]
         label_suggestion_ordered[value] = label_suggestion[value]
 
-    report.create_report_file(reports_path, file_name, label_mse_score_ordered, label_suggestion_ordered, label_types)
+    report.create_report_file(reports_path, file_name, label_mse_score_ordered, label_suggestion_ordered, label_types, report.LastUpdatedOrderedDict())
     Logging.Logging.write_log_to_file_optimization_flush()

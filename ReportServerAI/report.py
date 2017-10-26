@@ -9,6 +9,7 @@ from keras.layers import Dropout
 from keras.models import Sequential
 from keras.layers import Dense, Activation
 from keras.layers.normalization import BatchNormalization
+from keras.callbacks import EarlyStopping
 from keras.wrappers.scikit_learn import KerasRegressor
 from sklearn.model_selection import KFold
 from sklearn.model_selection import cross_val_score
@@ -91,7 +92,21 @@ def getModelNumber(number):
     strNumber = str(number)
     return ('00000' + strNumber)[len(strNumber):]
 
-def create_report_file(report_path, file_name, label_mse_score, label_suggestion, label_types):
+def create_report_file(report_path, file_name, label_mse_score, label_suggestion, label_types, label_mse_score_best_epochs):
+    part_predictability_best_epochs = []
+    file_counter = 1
+    for key, value in label_mse_score_best_epochs.items():
+        data = {}
+        data["id"] = file_counter
+        data["part_name"] = key
+        data["predictability"] = value[0]
+
+        data["classification"] = value[1]
+        if value[1]:
+            data["accuracy"] = value[2]
+        part_predictability_best_epochs.append(data)
+        file_counter += 1
+
     part_predictability = []
     file_counter = 1
     for key, value in label_mse_score.items():
@@ -126,6 +141,7 @@ def create_report_file(report_path, file_name, label_mse_score, label_suggestion
         file_counter += 1
 
     json_file = {}
+    json_file["part_predictability_best_epochs"] = part_predictability_best_epochs
     json_file["part_predictability"] = part_predictability
     json_file["suggestions"] = suggestions
 
@@ -272,15 +288,12 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
         label_suggestion = LastUpdatedOrderedDict()
         label_types = LastUpdatedOrderedDict()
         label_mse_score = LastUpdatedOrderedDict()
+        label_mse_score_best_epochs = LastUpdatedOrderedDict()
         label_category_dict = LastUpdatedOrderedDict()
         number_of_columns = len(desired_columns_as_label)
         desired_columns_as_label = list(map((lambda x: x.strip("\n ,")), desired_columns_as_label))
         for i in range(0, number_of_columns):
             early_end = False;
-
-            # child_pid = os.fork()
-            # Logging.Logging.write_log_to_file_selectable("child_pid : " + str(child_pid))
-            # if child_pid == 0:
 
             # copy data frame to make changes on copy
             data_frame_copy = data_frame.copy(deep=True)
@@ -407,6 +420,10 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                                 best_maxAccuracy = accuracy[1]
                                 minMSEFeatureList = feature_set_column_names
                                 save_model = model
+                                save_x_train = x_train
+                                save_y_train = y_train
+                                save_x_test = x_test
+                                save_y_test = y_test
 
                                 if (number_of_features - 1 > 0):
                                     modelClass = modelArchitectureClassification(number_of_features - 1,
@@ -444,6 +461,10 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                                 best_minimumMSEValue = local_minimumMSEValue
                                 minMSEFeatureList = feature_set_column_names
                                 save_model = model
+                                save_x_train = x_train
+                                save_y_train = y_train
+                                save_x_test = x_test
+                                save_y_test = y_test
 
                                 if (number_of_features - 1 > 0):
                                     modelReg = modelArchitectureRegression(number_of_features - 1, preset_optimizer)
@@ -462,9 +483,19 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                 label_types[label_column_name] = "date"
 
             if classification:
+                checkpointer = EarlyStopping(monitor='acc', min_delta=0, patience=1, verbose=1, mode='auto')
+            else:
+                checkpointer = EarlyStopping(monitor='loss', min_delta=0, patience=1, verbose=1, mode='auto')
+
+            save_model.fit(save_x_train, save_y_train, epochs=30, batch_size=preset_batch_size, verbose=1, callbacks=[checkpointer])
+            save_val_losses = save_model.evaluate(save_x_test, save_y_test, batch_size=preset_batch_size, verbose=1)
+
+            if classification:
+                label_mse_score_best_epochs[label_column_name] = (save_val_losses[0], classification, save_val_losses[1])
                 label_mse_score[label_column_name] = (best_minimumMSEValue, classification, best_maxAccuracy)
                 label_category_dict[label_column_name] = categorical_dict
             else:
+                label_mse_score_best_epochs[label_column_name] = (save_val_losses, classification)
                 label_mse_score[label_column_name] = (best_minimumMSEValue, classification)
                 label_category_dict[label_column_name] = {}
             model_save_file_number = getModelNumber(i + 1)
@@ -478,7 +509,7 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
             Logging.Logging.write_log_to_file_selectable('Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
             Logging.Logging.write_log_to_file_selectable_flush()
 
-    create_report_file(reports_path, file_name, label_mse_score, label_suggestion, label_types)
+    create_report_file(reports_path, file_name, label_mse_score, label_suggestion, label_types, label_mse_score_best_epochs)
     create_details_file(outputs_path, file_name, label_suggestion, label_types, label_category_dict)
 
     Logging.Logging.write_log_to_file_selectable_flush()
