@@ -20,6 +20,7 @@ import os
 import math
 import datetime as dt
 import json
+import copy
 import locale
 from collections import OrderedDict
 from dateutil import parser
@@ -487,15 +488,29 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
             else:
                 checkpointer = EarlyStopping(monitor='loss', min_delta=0, patience=1, verbose=1, mode='auto')
 
-            save_model.fit(save_x_train, save_y_train, epochs=30, batch_size=preset_batch_size, verbose=1, callbacks=[checkpointer])
-            save_val_losses = save_model.evaluate(save_x_test, save_y_test, batch_size=preset_batch_size, verbose=1)
+            if(classification):
+                save_model_cand = modelArchitectureClassification(np.shape(save_x_train)[1], number_of_unique_values, preset_optimizer)
+            else:
+                save_model_cand = modelArchitectureRegression(np.shape(save_x_train)[1], preset_optimizer)
+
+
+            save_model_cand.fit(save_x_train, save_y_train, epochs=30, batch_size=preset_batch_size, verbose=1, callbacks=[checkpointer])
+            save_val_losses = save_model_cand.evaluate(save_x_test, save_y_test, batch_size=preset_batch_size, verbose=1)
 
             if classification:
-                label_mse_score_best_epochs[label_column_name] = (save_val_losses[0], classification, save_val_losses[1])
+                if best_maxAccuracy < save_val_losses[1] or (best_maxAccuracy == save_val_losses[1] and best_minimumMSEValue > save_val_losses[0]):
+                    label_mse_score_best_epochs[label_column_name] = (save_val_losses[0], classification, save_val_losses[1])
+                    save_model = save_model_cand
+                else:
+                    label_mse_score_best_epochs[label_column_name] = (best_minimumMSEValue, classification, best_maxAccuracy)
                 label_mse_score[label_column_name] = (best_minimumMSEValue, classification, best_maxAccuracy)
                 label_category_dict[label_column_name] = categorical_dict
             else:
-                label_mse_score_best_epochs[label_column_name] = (save_val_losses, classification)
+                if best_minimumMSEValue > save_val_losses:
+                    label_mse_score_best_epochs[label_column_name] = (save_val_losses, classification)
+                    save_model = save_model_cand
+                else:
+                    label_mse_score_best_epochs[label_column_name] = (best_minimumMSEValue, classification)
                 label_mse_score[label_column_name] = (best_minimumMSEValue, classification)
                 label_category_dict[label_column_name] = {}
             model_save_file_number = getModelNumber(i + 1)

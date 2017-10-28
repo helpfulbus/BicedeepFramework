@@ -81,7 +81,7 @@ def get_random_hyperparameter_configuration():
     return parameters
 
 
-def run_then_return_val_loss(num_iters, hyperparameters, input_dim, is_classification, output_dimension, x_train, y_train, x_test, y_test):
+def run_then_return_val_loss(hyperparameters, input_dim, is_classification, output_dimension, x_train, y_train, x_test, y_test, epochs, callbacks, verb):
     with tf.device('/cpu:0'):
         number_of_layers = hyperparameters[0][0]
         model = Sequential()
@@ -101,15 +101,15 @@ def run_then_return_val_loss(num_iters, hyperparameters, input_dim, is_classific
             model.add(Dense(output_dimension, activation='softmax'))
             model.compile(loss='categorical_crossentropy', optimizer=hyperparameters[1], metrics=['accuracy'])
 
-            model.fit(x_train, y_train, epochs=6, batch_size=hyperparameters[4], verbose=0)
-            loss_and_metrics = model.evaluate(x_test, y_test, batch_size=hyperparameters[4], verbose=0)
+            model.fit(x_train, y_train, epochs=epochs, batch_size=hyperparameters[4], verbose=verb, callbacks=callbacks)
+            loss_and_metrics = model.evaluate(x_test, y_test, batch_size=hyperparameters[4], verbose=verb)
             return loss_and_metrics, model
         else:
             model.add(Dense(1, kernel_initializer='normal'))
             model.compile(loss='mean_absolute_error', optimizer=hyperparameters[1])
 
-            model.fit(x_train, y_train, epochs=6, batch_size=hyperparameters[4], verbose=0)
-            loss_and_metrics = model.evaluate(x_test, y_test, batch_size=hyperparameters[4], verbose=0)
+            model.fit(x_train, y_train, epochs=epochs, batch_size=hyperparameters[4], verbose=verb, callbacks=callbacks)
+            loss_and_metrics = model.evaluate(x_test, y_test, batch_size=hyperparameters[4], verbose=verb)
             return loss_and_metrics, model
 
 
@@ -251,8 +251,8 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
                     hypers = []
 
                     for t in T:
-                        loss, mod = run_then_return_val_loss(int(r_i), t, number_of_features, classification,
-                                                             number_of_unique_values, x_train, y_train, x_test, y_test)
+                        loss, mod = run_then_return_val_loss(t, number_of_features, classification,
+                                                             number_of_unique_values, x_train, y_train, x_test, y_test, 6, None, 0)
                         Logging.Logging.write_log_to_file_optimization(t)
                         Logging.Logging.write_log_to_file_optimization(loss)
                         if (classification):
@@ -296,24 +296,26 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
                     if (len(val_losses) > 0 and len(models) > 0 and found_better):
                         Logging.Logging.write_log_to_file_optimization('Found better')
 
-                        save_model = models[used_model_id]
+                        save_model_cand = models[used_model_id]
 
                         if classification:
                             checkpointer = EarlyStopping(monitor='acc', min_delta=0, patience=1, verbose=1,mode='auto')
                         else:
                             checkpointer = EarlyStopping(monitor='loss', min_delta=0, patience=1, verbose=1,mode='auto')
 
-                        save_model.fit(x_train, y_train, epochs=30, batch_size=hypers[used_model_id][4], verbose=1, callbacks=[checkpointer])
-                        save_val_losses = save_model.evaluate(x_test, y_test, batch_size=hypers[used_model_id][4],verbose=0)
+
+                        save_val_losses, save_model_cand = run_then_return_val_loss(hypers[used_model_id], number_of_features, classification,
+                                                             number_of_unique_values, x_train, y_train, x_test, y_test, 30, [checkpointer], 1)
 
                         if classification:
                             if label_mse_score_best_epochs[label_column_name][2] < save_val_losses[1] or (label_mse_score_best_epochs[label_column_name][2] == save_val_losses[1] and label_mse_score_best_epochs[label_column_name][0] > save_val_losses[0]):
                                 label_mse_score_best_epochs[label_column_name] = (save_val_losses[0], classification, save_val_losses[1])
+                                save_model_cand.save(model_save_file_name)
                         else:
-                            if label_mse_score_best_epochs[label_column_name][0] > save_val_losses[0]:
+                            if label_mse_score_best_epochs[label_column_name][0] > save_val_losses:
                                 label_mse_score_best_epochs[label_column_name] = (save_val_losses, classification)
+                                save_model_cand.save(model_save_file_name)
 
-                        save_model.save(model_save_file_name)
                     Logging.Logging.write_log_to_file_optimization("Time elapsed: {} seconds".format(end - start))
                     Logging.Logging.write_log_to_file_optimization("*****")
                 Logging.Logging.write_log_to_file_optimization("End of iteration: {}".format(i))
