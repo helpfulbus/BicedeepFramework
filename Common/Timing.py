@@ -34,5 +34,6 @@ class Timing:
                 return False
         except Exception as e:
             logMethod(str(e))
+            Logging.Logging.remoteLog("Report_Server_Shutdown_Failed", "ID : " + instanceId)
             return False
 

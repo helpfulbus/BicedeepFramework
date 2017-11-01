@@ -9,7 +9,7 @@ from collections import namedtuple
 from Common import Logging
 
 
-def send_report_completed_message(message_body):
+def send_completed_message(message_body, message_group_id):
     sqs = get_boto3_resource('sqs')
     # Get the queue
     queue = sqs.get_queue_by_name(QueueName=config.EMAIL_QUEUE_NAME)
@@ -19,7 +19,7 @@ def send_report_completed_message(message_body):
             {
                 'Id': '1',
                 'MessageBody': message_body,
-                'MessageGroupId': 'ReportCompleted'
+                'MessageGroupId': message_group_id
             },
         ]
     )

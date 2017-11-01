@@ -91,7 +91,7 @@ def report_server_run(message):
         Logging.Logging.write_log_to_file(str(e))
 
     try:
-        Aws.send_report_completed_message(message.body)
+        Aws.send_completed_message(message.body, 'ReportCompleted')
         Logging.Logging.write_log_to_file("Report completed message sent to aws")
     except Exception as e:
         Logging.Logging.write_log_to_file(str(e))
