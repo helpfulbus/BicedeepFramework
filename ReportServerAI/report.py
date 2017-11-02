@@ -396,7 +396,8 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
 
                         y_train = data_to_categorical(y_train, column_unique_values, number_of_unique_values, categorical_dict)
 
-                        model.fit(x_train, y_train, epochs=5, batch_size=preset_batch_size, verbose=0)
+                        checkpointerClass = EarlyStopping(monitor='acc', min_delta=0, patience=0, verbose=0, mode='auto')
+                        model.fit(x_train, y_train, epochs=15, batch_size=preset_batch_size, verbose=0, callbacks=[checkpointerClass])
 
                         y_test = data_to_categorical(y_test, column_unique_values, number_of_unique_values, categorical_dict)
                         accuracy = model.evaluate(x_test, y_test, batch_size=preset_batch_size, verbose=0)
@@ -441,7 +442,8 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                         Logging.Logging.write_log_to_file_selectable(
                             'Column Start 2 Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
 
-                        model.fit(x_train, y_train, epochs=5, batch_size=preset_batch_size, verbose=0)
+                        checkpointerReg = EarlyStopping(monitor='loss', min_delta=0, patience=0, verbose=0, mode='auto')
+                        model.fit(x_train, y_train, epochs=15, batch_size=preset_batch_size, verbose=0, callbacks=[checkpointerReg])
 
                         loss_and_metrics = model.evaluate(x_test, y_test, batch_size=preset_batch_size, verbose=0)
 

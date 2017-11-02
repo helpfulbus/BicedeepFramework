@@ -230,6 +230,11 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
 
             Logging.Logging.write_log_to_file_optimization("Optimization Start for : {}".format(label_column_name))
 
+            if classification:
+                checkpointer = EarlyStopping(monitor='acc', min_delta=0, patience=0, verbose=0, mode='auto')
+            else:
+                checkpointer = EarlyStopping(monitor='loss', min_delta=0, patience=0, verbose=0, mode='auto')
+
             model_save_file_number = report.getModelNumber(index + 1)
             model_save_file_name = outputs_path + "/" + file_name + "." + model_save_file_number + ".h5"
             ##Hyperband algorithm##
@@ -253,7 +258,7 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
 
                     for t in T:
                         loss, mod = run_then_return_val_loss(t, number_of_features, classification,
-                                                             number_of_unique_values, x_train, y_train, x_test, y_test, 6, None, 0)
+                                                             number_of_unique_values, x_train, y_train, x_test, y_test, 15, [checkpointer], 0)
                         Logging.Logging.write_log_to_file_optimization(t)
                         Logging.Logging.write_log_to_file_optimization(loss)
                         if (classification):
