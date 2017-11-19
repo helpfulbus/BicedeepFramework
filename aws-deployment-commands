@@ -2,7 +2,9 @@ pipreqs ~/bicedeepFramework
 
 
 ------------------------------------------------------------------------------------------
-scp -r -i "~/Keys/AwsKey/microkey.pem" ./bicedeepFramework/ ubuntu@ec2-IP.us-west-2.compute.amazonaws.com:/home/ubuntu/
+cd bicedeepFramework
+scp -r -i "~/Keys/AwsKey/microkey.pem" [!.]* ubuntu@ec2-IP.us-west-2.compute.amazonaws.com:/home/ubuntu/bicedeepFramework/
+
 
 ---- ONLY GPU ----
 scp -r -i "~/Keys/AwsKey/microkey.pem" ~/cuda/ ubuntu@ec2-IP.us-west-2.compute.amazonaws.com:/home/ubuntu/
