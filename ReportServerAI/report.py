@@ -54,7 +54,7 @@ def is_date(string):
     try:
         parse(string)
         return True
-    except ValueError:
+    except:
         return False
 
 def is_number(input):

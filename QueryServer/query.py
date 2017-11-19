@@ -101,6 +101,7 @@ def calculate_query_from_csv(query_file_path, model_file_path, model_details_pat
 
     model = load_model(model_file_path)
     data_frame = report.readData(query_file_path)
+    data_frame_copy = data_frame.copy(deep=True)
 
     string_columns, date_columns, big_number_columns = report.preprocess_data(data_frame)
 
@@ -118,7 +119,7 @@ def calculate_query_from_csv(query_file_path, model_file_path, model_details_pat
     else:
         result_column_series[result_column_name] = result_column_series[result_column_name].apply(lambda x: result_string_from_regression(x[0], result_column_type))
 
-    data_frame = pd.concat([data_frame, result_column_series], axis=1)
+    data_frame = pd.concat([data_frame_copy, result_column_series], axis=1)
     data_frame.to_csv(query_file_path, index=False)
 
 

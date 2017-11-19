@@ -65,11 +65,12 @@ def queue_server_run(message):
     except Exception as e:
         Logging.Logging.write_log_to_file_queueserver(str(e))
 
-    try:
-        Aws.send_completed_message(message.body, 'QueueFileCompleted')
-        Logging.Logging.write_log_to_file("Queue File completed message sent to aws")
-    except Exception as e:
-        Logging.Logging.write_log_to_file(str(e))
+    if message.attributes['MessageGroupId'] == "NewQueryFile":
+        try:
+            Aws.send_completed_message(message.body, 'QueueFileCompleted')
+            Logging.Logging.write_log_to_file("Queue File completed message sent to aws")
+        except Exception as e:
+            Logging.Logging.write_log_to_file(str(e))
 
     try:
         message.delete()

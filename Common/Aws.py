@@ -65,7 +65,7 @@ def read_queue(queueName):
     sqs = get_boto3_resource('sqs')
     queue = sqs.get_queue_by_name(QueueName=queueName)
 
-    message_list = queue.receive_messages(MessageAttributeNames=['MessageGroupId'],
+    message_list = queue.receive_messages(AttributeNames=['MessageGroupId'],
                                           MaxNumberOfMessages=1,
                                           WaitTimeSeconds=1)
     if len(message_list) > 0:
