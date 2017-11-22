@@ -69,9 +69,9 @@ def get_random_hyperparameter_configuration():
     parameters = []
     arch_list = get_architecture_list()
     parameters.append(random.choice(arch_list))
-    optimizers = ['sgd', 'Adam', 'Nadam', 'adadelta']
+    optimizers = ['sgd', 'rmsprop', 'adagrad', 'adadelta', 'adam', 'adamax', 'nadam']
     parameters.append(random.choice(optimizers))
-    activations = ['relu', 'sigmoid']
+    activations = ['relu', 'sigmoid', 'tanh', 'softmax']
     parameters.append(random.choice(activations))
     regularization = [0, 1]  # 0: dropout, 1: batch_normalization
     parameters.append(random.choice(regularization))
@@ -302,16 +302,27 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
                     if (len(val_losses) > 0 and len(models) > 0 and found_better):
                         Logging.Logging.write_log_to_file_optimization('Found better')
 
-                        save_model_cand = models[used_model_id]
+                        #is it better than old trained best
+                        if classification:
+                            if label_mse_score_best_epochs[label_column_name][2] < val_losses[used_model_id][1] or (label_mse_score_best_epochs[label_column_name][2] == val_losses[used_model_id][1] and label_mse_score_best_epochs[label_column_name][0] > val_losses[used_model_id][0]):
+                                label_mse_score_best_epochs[label_column_name] = (val_losses[used_model_id][0], classification, val_losses[used_model_id][1])
+                                label_mse_score[label_column_name] = (val_losses[used_model_id][0], classification, val_losses[used_model_id][1])
+                                models[used_model_id].save(model_save_file_name)
+                        else:
+                            if label_mse_score_best_epochs[label_column_name][0] > val_losses[used_model_id][0]:
+                                label_mse_score_best_epochs[label_column_name] = (val_losses[used_model_id][0], classification)
+                                label_mse_score[label_column_name] = (val_losses[used_model_id][0], classification)
+                                models[used_model_id].save(model_save_file_name)
+
 
                         if classification:
-                            checkpointer = EarlyStopping(monitor='acc', min_delta=0, patience=1, verbose=1,mode='auto')
+                            checkpointer = EarlyStopping(monitor='acc', min_delta=0, patience=2, verbose=1,mode='auto')
                         else:
-                            checkpointer = EarlyStopping(monitor='loss', min_delta=0, patience=1, verbose=1,mode='auto')
+                            checkpointer = EarlyStopping(monitor='loss', min_delta=0, patience=2, verbose=1,mode='auto')
 
 
                         save_val_losses, save_model_cand = run_then_return_val_loss(hypers[used_model_id], number_of_features, classification,
-                                                             number_of_unique_values, x_train, y_train, x_test, y_test, 30, [checkpointer], 1)
+                                                             number_of_unique_values, x_train, y_train, x_test, y_test, 50, [checkpointer], 1)
 
                         if classification:
                             if label_mse_score_best_epochs[label_column_name][2] < save_val_losses[1] or (label_mse_score_best_epochs[label_column_name][2] == save_val_losses[1] and label_mse_score_best_epochs[label_column_name][0] > save_val_losses[0]):
@@ -336,6 +347,8 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
     for key, value in id_name_dict.items():
         label_mse_score_ordered[value] = label_mse_score_best_epochs[value]
         label_suggestion_ordered[value] = label_suggestion[value]
+
+    Logging.Logging.write_log_to_file_optimization("Result : " + str(label_mse_score_ordered) )
 
     report.create_report_file(reports_path, file_name, label_mse_score_ordered, label_suggestion_ordered, label_types, report.LastUpdatedOrderedDict())
     Logging.Logging.write_log_to_file_optimization_flush()

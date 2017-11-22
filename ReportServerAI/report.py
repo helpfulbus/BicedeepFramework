@@ -487,9 +487,9 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                 label_types[label_column_name] = "date"
 
             if classification:
-                checkpointer = EarlyStopping(monitor='acc', min_delta=0, patience=1, verbose=1, mode='auto')
+                checkpointer = EarlyStopping(monitor='acc', min_delta=0, patience=2, verbose=1, mode='auto')
             else:
-                checkpointer = EarlyStopping(monitor='loss', min_delta=0, patience=1, verbose=1, mode='auto')
+                checkpointer = EarlyStopping(monitor='loss', min_delta=0, patience=2, verbose=1, mode='auto')
 
             if(classification):
                 save_model_cand = modelArchitectureClassification(np.shape(save_x_train)[1], number_of_unique_values, preset_optimizer)
@@ -497,7 +497,7 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                 save_model_cand = modelArchitectureRegression(np.shape(save_x_train)[1], preset_optimizer)
 
 
-            save_model_cand.fit(save_x_train, save_y_train, epochs=30, batch_size=preset_batch_size, verbose=1, callbacks=[checkpointer])
+            save_model_cand.fit(save_x_train, save_y_train, epochs=50, batch_size=preset_batch_size, verbose=1, callbacks=[checkpointer])
             save_val_losses = save_model_cand.evaluate(save_x_test, save_y_test, batch_size=preset_batch_size, verbose=1)
 
             if classification:
