@@ -1,9 +1,0 @@
-boto3
-pandas
-numpy
-Keras
-tensorflow
-h5py
-protobuf
-scikit_learn
-google_cloud
