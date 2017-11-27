@@ -20,6 +20,7 @@ import os
 import math
 import datetime as dt
 import json
+import heapq
 import copy
 import locale
 from collections import OrderedDict
@@ -345,6 +346,8 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                     break
 
                 number_of_features = len(data_frame_copy.columns) - 1
+                feature_reduce_rate = int(number_of_features / 50) + 1
+                remove_heap = []
 
                 if(number_of_features - 1 > 0):
                     modelClass = modelArchitectureClassification(number_of_features - 1, number_of_unique_values, preset_optimizer)
@@ -412,6 +415,9 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                         if(np.isnan(accuracy[0])):
                             accuracy[0] = float('inf')
 
+                        if j >= 0:
+                            remove_heap.append((accuracy[1], j))
+
                         if accuracy[1] > local_maxAccuracy or (accuracy[1] == local_maxAccuracy and accuracy[0] <= local_minimumMSEValue):
                             local_minimumMSEValue = accuracy[0]
                             local_maxAccuracy = accuracy[1]
@@ -456,6 +462,9 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                         if(np.isnan(loss_and_metrics)):
                             loss_and_metrics = float('inf')
 
+                        if j >= 0:
+                            remove_heap.append((loss_and_metrics, j))
+
                         if loss_and_metrics <= local_minimumMSEValue:
                             local_minimumMSEValue = loss_and_metrics
                             remove_feature_index = j
@@ -474,8 +483,15 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
                                     modelReg = modelArchitectureRegression(number_of_features - 1, preset_optimizer)
 
                 if (remove_feature_index >= 0):
-                    Logging.Logging.write_log_to_file_selectable('removed feature: {}'.format(remove_feature_index))
-                    data_frame_copy.drop(data_frame_copy.columns[[remove_feature_index]], axis=1, inplace=True)
+
+                    heapq.heapify(remove_heap)
+                    if(classification):
+                        drop_list = heapq.nlargest(feature_reduce_rate, remove_heap)
+                    else:
+                        drop_list = heapq.nsmallest(feature_reduce_rate, remove_heap)
+
+                    Logging.Logging.write_log_to_file_selectable('removed feature: {}'.format(str(drop_list)))
+                    data_frame_copy.drop(data_frame_copy.columns[[k[1] for k in drop_list]], axis=1, inplace=True)
 
             # add to dict best mse and best feature list, save the model
             label_suggestion[label_column_name] = minMSEFeatureList
