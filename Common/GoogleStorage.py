@@ -9,6 +9,7 @@ import config
 
 reports_folder = "/reports/"
 outputs_folder = "/outputs/"
+logs_folder = "/logs/"
 
 def _get_storage_client():
     return storage.Client(project=config.PROJECT_NAME)
@@ -95,7 +96,7 @@ def download_file(file_name, email):
     return file_name_long, reports_path_dir, outputs_path_dir
 
 
-def upload_results(email):
+def upload_results(email, reported_file_name):
     client = _get_storage_client()
     bucket = client.bucket(config.BUCKET_NAME)
 
@@ -114,12 +115,29 @@ def upload_results(email):
         blob = bucket.blob(dest_name)
         blob.upload_from_filename(file_name_full)
 
+    for file_name in os.listdir('.'):
+        if(file_name.split('.')[-1] == 'log'):
+            dest_name = email + logs_folder + reported_file_name.split('/')[-1] + "/" + file_name
+            file_name_full = "./" + file_name
+            blob = bucket.blob(dest_name)
+            blob.upload_from_filename(file_name_full)
+            open(file_name, 'w').close()
+
 def upload_query_results(query_file_name):
     client = _get_storage_client()
     bucket = client.bucket(config.BUCKET_NAME)
 
     blob = bucket.blob(query_file_name)
     blob.upload_from_filename(config.BUCKET_NAME + "/" + query_file_name)
+
+    query_file_name_split = query_file_name.split('/')
+    email = query_file_name_split[0]
+    file_name = "queueserver.log"
+    dest_name = email + logs_folder + query_file_name_split[-1] + "/" + file_name
+    file_name_full = "./" + file_name
+    blob = bucket.blob(dest_name)
+    blob.upload_from_filename(file_name_full)
+    open(file_name, 'w').close()
 
 def delete_local_dir():
     os.system("sudo rm -rf " + config.BUCKET_NAME)

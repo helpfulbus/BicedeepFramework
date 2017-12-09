@@ -93,6 +93,7 @@ def calculate_query_from_json(query_file_path, model_file_path, model_details_pa
         data['results'] = result_string_from_regression(predict[0][0], data['result_type'])
 
     Logging.Logging.write_log_to_file_queueserver(str(data))
+    Logging.Logging.write_log_to_file_queueserver_flush()
     with open(query_file_path, 'w') as output_file:
         json.dump(data, output_file)
 

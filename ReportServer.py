@@ -75,11 +75,12 @@ def report_server_run(message):
         return False
 
     Logging.Logging.write_log_to_file("Optimization completed")
+    Logging.Logging.write_log_to_file_flush()
 
     # Google upload results
     while True:
         try:
-            GoogleStorage.upload_results(email)
+            GoogleStorage.upload_results(email, file_name)
             break
         except Exception as e:
             Logging.Logging.write_log_to_file(str(e))
