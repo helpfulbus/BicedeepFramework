@@ -68,7 +68,10 @@ def is_number(input):
         return False
 
 def to_comma_int(input):
-    return int(input.replace(',', ''))
+    try:
+        return int(input.replace(',', ''))
+    except:
+        return 0
 
 
 def insert_second_dot(input):
