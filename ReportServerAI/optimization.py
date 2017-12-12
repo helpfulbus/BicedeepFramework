@@ -75,7 +75,7 @@ def get_random_hyperparameter_configuration():
     parameters.append(random.choice(activations))
     regularization = [0, 1]  # 0: dropout, 1: batch_normalization
     parameters.append(random.choice(regularization))
-    batch_sizes = [2, 32, 128, 512, 1024]
+    batch_sizes = [16, 32, 128, 512, 1024]
     parameters.append(random.choice(batch_sizes))
 
     return parameters
