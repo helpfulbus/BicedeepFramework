@@ -28,6 +28,7 @@ from dateutil import parser
 from dateutil.parser import parse
 from decimal import *
 from Common import Logging
+from Common import GoogleStorage
 
 import tensorflow as tf
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -79,7 +80,7 @@ def insert_second_dot(input):
 
 
 def convertToNumber(s):
-    int_value = int.from_bytes(s.encode(), 'big')
+    int_value = int.from_bytes(str(s).encode(), 'big')
     return Decimal(insert_second_dot(str(int_value)))
 
 
@@ -96,6 +97,18 @@ def get_nearest_power_of_2(number):
 def getModelNumber(number):
     strNumber = str(number)
     return ('00000' + strNumber)[len(strNumber):]
+
+def is_number_classifiction(number_of_unique_values, number_of_samples):
+    if((number_of_unique_values / number_of_samples) < 0.01 and number_of_unique_values < 256 and number_of_samples * number_of_unique_values < 100000000):
+        return True
+    else:
+        return False
+
+def is_string_classifiction(number_of_unique_values, number_of_samples):
+    if(number_of_samples * number_of_unique_values < 100000000):
+        return True
+    else:
+        return False
 
 def create_report_file(report_path, file_name, label_mse_score, label_suggestion, label_types, label_mse_score_best_epochs):
     part_predictability_best_epochs = []
@@ -213,12 +226,20 @@ def preprocess_data(df):
                 string_columns.append(col_name)
         elif is_number_column:
             df[col_name] = df[col_name].map(to_comma_int)
-            if df[col_name].mean() > 100000:
-                big_number_columns.append(col_name)
+            try:
+                if df[col_name].mean() > 100000:
+                    big_number_columns.append(col_name)
+            except:
+                df[col_name] = df[col_name].map(convertToNumber)
+                string_columns.append(col_name)
         else:
             df[col_name] = df[col_name].fillna(0)
-            if df[col_name].mean() > 100000:
-                big_number_columns.append(col_name)
+            try:
+                if df[col_name].mean() > 100000:
+                    big_number_columns.append(col_name)
+            except:
+                df[col_name] = df[col_name].map(convertToNumber)
+                string_columns.append(col_name)
 
     return string_columns, date_columns, big_number_columns
 
@@ -274,8 +295,11 @@ def modelArchitectureClassification(input_dimension, output_dimension, optimizer
         return model
 
 
-def create_report(file_path, file_name, desired_columns_as_label, reports_path, outputs_path):
+def create_report(file_path, file_name, desired_columns_as_label, reports_path, outputs_path, email, file_name_full):
+
+    status = 0.0 / 100.0
     data_frame = readData(file_path)
+    Logging.Logging.write_log_to_file_status(str(status))
 
     preprocess_start = time.time()
     Logging.Logging.write_log_to_file_selectable("Starting Pre Process")
@@ -283,10 +307,22 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
     Logging.Logging.write_log_to_file_selectable("Pre Process Ended")
 
     preprocess_end = time.time()
+
+    status = 2.0 / 100.0
+
     Logging.Logging.write_log_to_file_selectable("Pre process took %.2f seconds " % (preprocess_end - preprocess_start))
+    Logging.Logging.write_log_to_file_status(str(status))
+    Logging.Logging.write_log_to_file_status_flush()
 
     ##############Feature Selection Part#############
     Logging.Logging.write_log_to_file_selectable('Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+    Logging.Logging.write_log_to_file_selectable_flush()
+
+    try:
+        GoogleStorage.upload_logs(email, file_name_full)
+    except Exception as e:
+        Logging.Logging.write_log_to_file_selectable("Logs Upload Failed : " + str(e))
+
     ft_sel_time_start = time.time()
 
     with tf.device('/cpu:0'):
@@ -297,6 +333,9 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
         label_category_dict = LastUpdatedOrderedDict()
         number_of_columns = len(desired_columns_as_label)
         desired_columns_as_label = list(map((lambda x: x.strip("\n ,")), desired_columns_as_label))
+
+        status_column_increase = (78.0 / number_of_columns) / 100
+
         for i in range(0, number_of_columns):
             early_end = False;
 
@@ -314,13 +353,12 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
             number_of_unique_values = len(column_unique_values)
             number_of_samples = len(label_column.values)
 
-            if ((number_of_unique_values / number_of_samples) < 0.01 and number_of_unique_values < 64):
-                classification = True
             label_column_name = data_frame_copy.columns[label_column_index]
 
-            if(label_column_name in string_columns or label_column_name in date_columns):
-                if(number_of_samples * number_of_unique_values < 2000000):
-                    classification = True
+            classification = is_number_classifiction(number_of_unique_values, number_of_samples)
+
+            if (label_column_name in string_columns or label_column_name in date_columns):
+                classification = is_string_classifiction(number_of_unique_values, number_of_samples)
 
             if(classification):
                 categorical_dict = get_categorical_dict(column_unique_values)
@@ -344,6 +382,9 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
             minMSEFeatureList = []  # value to keep list of feature where min mse occurs
 
             isFirstTime = True
+
+            status_feature_inc = (status_column_increase / float(len(data_frame_copy.columns) - 1))
+
             while (len(data_frame_copy.columns) >= 2):
                 if (early_end):
                     break
@@ -495,6 +536,15 @@ def create_report(file_path, file_name, desired_columns_as_label, reports_path, 
 
                     Logging.Logging.write_log_to_file_selectable('removed feature: {}'.format(str(drop_list)))
                     data_frame_copy.drop(data_frame_copy.columns[[k[1] for k in drop_list]], axis=1, inplace=True)
+
+                status = status + status_feature_inc
+                Logging.Logging.write_log_to_file_status(str(status))
+                Logging.Logging.write_log_to_file_status_flush()
+
+                try:
+                    GoogleStorage.upload_logs(email, file_name_full)
+                except Exception as e:
+                    Logging.Logging.write_log_to_file_selectable("Logs Upload Failed : " + str(e))
 
             # add to dict best mse and best feature list, save the model
             label_suggestion[label_column_name] = minMSEFeatureList

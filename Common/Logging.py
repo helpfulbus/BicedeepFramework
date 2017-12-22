@@ -12,6 +12,7 @@ class Logging:
     f2 = open('selectablefeature.log', 'a')
     f3 = open('optimization.log', 'a')
     f4 = open('queueserver.log', 'a')
+    f5 = open('status.log', 'a')
 
     @staticmethod
     def init():
@@ -28,7 +29,6 @@ class Logging:
         input_string = str(datetime.datetime.now()) + "  :  " + input_string + "\n"
         print(input_string)
         Logging.f.write(input_string)
-        #Logging.f.flush()
 
     @staticmethod
     def write_log_to_file_flush():
@@ -40,7 +40,6 @@ class Logging:
         input_string = str(datetime.datetime.now()) + "  :  " + input_string + "\n"
         print(input_string)
         Logging.f2.write(input_string)
-        # Logging.f.flush()
 
     @staticmethod
     def write_log_to_file_selectable_flush():
@@ -52,7 +51,6 @@ class Logging:
         input_string = str(datetime.datetime.now()) + "  :  " + input_string + "\n"
         print(input_string)
         Logging.f3.write(input_string)
-        # Logging.f.flush()
 
     @staticmethod
     def write_log_to_file_optimization_flush():
@@ -64,11 +62,21 @@ class Logging:
         input_string = str(datetime.datetime.now()) + "  :  " + input_string + "\n"
         print(input_string)
         Logging.f4.write(input_string)
-        # Logging.f.flush()
 
     @staticmethod
     def write_log_to_file_queueserver_flush():
         Logging.f4.flush()
+
+    @staticmethod
+    def write_log_to_file_status(input_string):
+        input_string = str(input_string)
+        input_string = str(datetime.datetime.now()) + "  :  " + input_string + "\n"
+        print(input_string)
+        Logging.f5.write(input_string)
+
+    @staticmethod
+    def write_log_to_file_status_flush():
+        Logging.f5.flush()
 
     @staticmethod
     def remoteLog(log_name, input_string):

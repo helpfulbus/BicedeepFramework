@@ -20,6 +20,7 @@ from numpy import argsort
 from keras.layers import Dropout
 from ReportServerAI import report
 from Common import Logging
+from Common import GoogleStorage
 
 import tensorflow as tf
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -75,7 +76,7 @@ def get_random_hyperparameter_configuration():
     parameters.append(random.choice(activations))
     regularization = [0, 1]  # 0: dropout, 1: batch_normalization
     parameters.append(random.choice(regularization))
-    batch_sizes = [16, 32, 128, 512, 1024]
+    batch_sizes = [16, 32, 64, 128, 512, 1024]
     parameters.append(random.choice(batch_sizes))
 
     return parameters
@@ -127,8 +128,7 @@ def get_remove_label_list(label_list, suggestions, label_name):
             remove_list.append(label_list[i])
     return remove_list
 
-
-def do_optimization(file_path, file_name, reports_path, outputs_path):
+def do_optimization(file_path, file_name, reports_path, outputs_path, email, file_name_full):
 
     data_frame = report.readData(file_path)
 
@@ -179,7 +179,11 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
     with tf.device('/cpu:0'):
         gc.enable()
         num_of_cols = len(desired_columns_as_label)
+        status = 80.0 / 100.0
         desired_columns_as_label = list(map((lambda x: x.strip("\n ,")), desired_columns_as_label))
+
+        status_column_increase = (10.0 / num_of_cols) / 100
+
         for index in range(0, num_of_cols):
             data_frame_copy = data_frame.copy(deep=True)
 
@@ -193,13 +197,12 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
             number_of_unique_values = len(label_column.unique())
             number_of_samples = len(label_column.values)
 
-            if ((number_of_unique_values / number_of_samples) < 0.01 and number_of_unique_values < 64):
-                classification = True
             label_column_name = data_frame_copy.columns[label_column_index]
 
+            classification = report.is_number_classifiction(number_of_unique_values, number_of_samples)
+
             if (label_column_name in string_columns or label_column_name in date_columns):
-                if (number_of_samples * number_of_unique_values < 2000000):
-                    classification = True
+                classification = report.is_string_classifiction(number_of_unique_values, number_of_samples)
 
             if (classification):
                 categorical_dict = report.get_categorical_dict(column_unique_values)
@@ -238,8 +241,8 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
             model_save_file_number = report.getModelNumber(index + 1)
             model_save_file_name = outputs_path + "/" + file_name + "." + model_save_file_number + ".h5"
             ##Hyperband algorithm##
-            max_iter = 27
-            eta = 3
+            max_iter = 32
+            eta = 2
             logeta = lambda x: log(x) / log(eta)
             s_max = int(logeta(max_iter))
             B = (s_max + 1) * max_iter
@@ -339,7 +342,15 @@ def do_optimization(file_path, file_name, reports_path, outputs_path):
                 gc.collect()
                 break
 
+            status = status + status_column_increase
+            Logging.Logging.write_log_to_file_status(str(status))
+            Logging.Logging.write_log_to_file_status_flush()
             Logging.Logging.write_log_to_file_optimization_flush()
+
+            try:
+                GoogleStorage.upload_logs(email, file_name_full)
+            except Exception as e:
+                Logging.Logging.write_log_to_file_selectable("Logs Upload Failed : " + str(e))
 
     label_mse_score_ordered = report.LastUpdatedOrderedDict()
     label_suggestion_ordered = report.LastUpdatedOrderedDict()

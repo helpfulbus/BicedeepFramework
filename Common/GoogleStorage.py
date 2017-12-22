@@ -123,6 +123,18 @@ def upload_results(email, reported_file_name):
             blob.upload_from_filename(file_name_full)
             open(file_name, 'w').close()
 
+def upload_logs(email, reported_file_name):
+    client = _get_storage_client()
+    bucket = client.bucket(config.BUCKET_NAME)
+
+    for file_name in os.listdir('.'):
+        if (file_name.split('.')[-1] == 'log'):
+            dest_name = email + logs_folder + reported_file_name.split('/')[-1] + "/" + file_name
+            file_name_full = "./" + file_name
+            blob = bucket.blob(dest_name)
+            blob.upload_from_filename(file_name_full)
+
+
 def upload_query_results(query_file_name):
     client = _get_storage_client()
     bucket = client.bucket(config.BUCKET_NAME)

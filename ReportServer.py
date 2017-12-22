@@ -14,18 +14,18 @@ from Common import Logging
 import config
 
 
-def selectable_feature(file_path, file_name, selected_headers, reports_path, outputs_path):
+def selectable_feature(file_path, file_name, selected_headers, reports_path, outputs_path, email, file_name_full):
     from ReportServerAI import report
     os.nice(-20)
     os.setpriority(posix.PRIO_PROCESS, os.getpid(), -20)
-    report.create_report(file_path, file_name, selected_headers, reports_path, outputs_path)
+    report.create_report(file_path, file_name, selected_headers, reports_path, outputs_path, email, file_name_full)
 
 
-def optimization(file_path, file_name, reports_path, outputs_path):
+def optimization(file_path, file_name, reports_path, outputs_path, email, file_name_full):
     from ReportServerAI import optimization
     os.nice(-20)
     os.setpriority(posix.PRIO_PROCESS, os.getpid(), -20)
-    optimization.do_optimization(file_path, file_name, reports_path, outputs_path)
+    optimization.do_optimization(file_path, file_name, reports_path, outputs_path, email, file_name_full)
 
 
 def report_server_run(message):
@@ -49,7 +49,7 @@ def report_server_run(message):
     # Calculations
     try:
         p = Process(target=selectable_feature,
-                    args=(file_path, file_name.split("/")[-1], selected_headers, reports_path, outputs_path,))
+                    args=(file_path, file_name.split("/")[-1], selected_headers, reports_path, outputs_path, email, file_name,))
         p.start()
         p.join()
     except Exception as e:
@@ -63,7 +63,7 @@ def report_server_run(message):
     Logging.Logging.write_log_to_file("Feature selection completed")
 
     try:
-        p2 = Process(target=optimization, args=(file_path, file_name.split("/")[-1], reports_path, outputs_path,))
+        p2 = Process(target=optimization, args=(file_path, file_name.split("/")[-1], reports_path, outputs_path, email, file_name,))
         p2.start()
         p2.join()
     except Exception as e:
