@@ -182,7 +182,7 @@ def do_optimization(file_path, file_name, reports_path, outputs_path, email, fil
         status = 80.0 / 100.0
         desired_columns_as_label = list(map((lambda x: x.strip("\n ,")), desired_columns_as_label))
 
-        status_column_increase = (10.0 / num_of_cols) / 100
+        status_column_increase = (20.0 / num_of_cols) / 100.0
 
         for index in range(0, num_of_cols):
             data_frame_copy = data_frame.copy(deep=True)
