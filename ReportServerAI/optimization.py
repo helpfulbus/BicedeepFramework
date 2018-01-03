@@ -101,7 +101,7 @@ def run_then_return_val_loss(hyperparameters, input_dim, is_classification, outp
                 output_dimension = 2
             model.add(Dense(output_dimension, activation='softmax'))
 
-            model = report.make_model_multigpu(model)
+            #model = report.make_model_multigpu(model)
 
             model.compile(loss='categorical_crossentropy', optimizer=hyperparameters[1], metrics=['accuracy'])
 
@@ -111,7 +111,7 @@ def run_then_return_val_loss(hyperparameters, input_dim, is_classification, outp
         else:
             model.add(Dense(1, kernel_initializer='normal'))
 
-            model = report.make_model_multigpu(model)
+            #model = report.make_model_multigpu(model)
 
             model.compile(loss='mean_absolute_error', optimizer=hyperparameters[1])
 
