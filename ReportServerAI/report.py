@@ -288,7 +288,7 @@ def modelArchitectureRegression(input_dimension, optimizer_input):
         model.add(BatchNormalization())
         model.add(Dense(1, kernel_initializer='normal'))
 
-        model = make_model_multigpu(model)
+        #model = make_model_multigpu(model)
 
         model.compile(loss='mean_absolute_error', optimizer=optimizer_input)
         return model
@@ -305,7 +305,7 @@ def modelArchitectureClassification(input_dimension, output_dimension, optimizer
         model.add(BatchNormalization())
         model.add(Dense(output_dimension, activation='softmax'))
 
-        model = make_model_multigpu(model)
+        #model = make_model_multigpu(model)
 
         model.compile(loss='categorical_crossentropy', optimizer=optimizer_input, metrics=['accuracy'])
         return model
