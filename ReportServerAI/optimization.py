@@ -24,7 +24,7 @@ from Common import GoogleStorage
 
 import tensorflow as tf
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-sess = tf.Session(config=tf.ConfigProto(inter_op_parallelism_threads=128))
+sess = tf.Session(config=tf.ConfigProto(inter_op_parallelism_threads=128, intra_op_parallelism_threads=128))
 
 # Build list that contains all possible architecture structures
 def get_architecture_list():
@@ -83,7 +83,7 @@ def get_random_hyperparameter_configuration():
 
 
 def run_then_return_val_loss(hyperparameters, input_dim, is_classification, output_dimension, x_train, y_train, x_test, y_test, epochs, callbacks, verb):
-    with tf.device('/cpu:0'):
+    with tf.device('/gpu:0'):
         number_of_layers = hyperparameters[0][0]
         model = Sequential()
         for i in range(0, number_of_layers):
@@ -182,7 +182,7 @@ def do_optimization(file_path, file_name, reports_path, outputs_path, email, fil
 
 
     Logging.Logging.write_log_to_file_optimization("Optimization Has Started")
-    with tf.device('/cpu:0'):
+    with tf.device('/gpu:0'):
         gc.enable()
         num_of_cols = len(desired_columns_as_label)
         status = 80.0 / 100.0
