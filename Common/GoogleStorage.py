@@ -128,7 +128,8 @@ def upload_logs(email, reported_file_name):
     bucket = client.bucket(config.BUCKET_NAME)
 
     for file_name in os.listdir('.'):
-        if (file_name.split('.')[-1] == 'log'):
+        name_split = file_name.split('.')
+        if (name_split[-1] == 'log' and name_split[-2] == 'status'):
             dest_name = email + logs_folder + reported_file_name.split('/')[-1] + "/" + file_name
             file_name_full = "./" + file_name
             blob = bucket.blob(dest_name)
