@@ -30,7 +30,7 @@ from decimal import *
 from Common import Logging
 from Common import GoogleStorage
 from tensorflow.python.client import device_lib
-from keras.utils.training_utils import multi_gpu_model
+#from keras.utils.training_utils import multi_gpu_model
 
 import tensorflow as tf
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -116,11 +116,11 @@ def get_available_gpu_number():
     local_device_protos = device_lib.list_local_devices()
     return len([x.name for x in local_device_protos if x.device_type == 'GPU'])
 
-def make_model_multigpu(model):
-    gpuNum = get_available_gpu_number()
-    if (gpuNum >= 2):
-        model = multi_gpu_model(model, gpus=gpuNum)
-    return model
+#def make_model_multigpu(model):
+#    gpuNum = get_available_gpu_number()
+#    if (gpuNum >= 2):
+#        model = multi_gpu_model(model, gpus=gpuNum)
+#    return model
 
 def create_report_file(report_path, file_name, label_mse_score, label_suggestion, label_types, label_mse_score_best_epochs):
     part_predictability_best_epochs = []
