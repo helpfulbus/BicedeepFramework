@@ -34,7 +34,7 @@ def result_string_from_regression(predict, result_type):
 def result_string_from_category(predictArr, category_dict, result_type):
     result_string = ""
 
-    for i in range(0, 2):
+    for i in range(0, len(predictArr)):
 
         best_index = np.argmax(predictArr)
         for key, value in category_dict.items():
