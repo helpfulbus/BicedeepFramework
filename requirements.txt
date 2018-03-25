@@ -7,6 +7,5 @@ python_dateutil
 protobuf
 scikit_learn
 h5py
-protobuf
 scikit_learn
 google_cloud
